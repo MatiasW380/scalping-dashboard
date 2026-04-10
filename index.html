@@ -372,7 +372,7 @@ td { padding: 4px 5px; }
     <!-- COLUMNA CENTRAL -->
     <div class="col-center">
       <div class="tv-wrap" style="display:flex;flex-direction:column;">
-        <div class="tv-header"><span class="tv-label">BTC-USD-SWAP · OKX · 1H</span></div>
+        <div class="tv-header"><span class="tv-label">BTC-USD-SWAP · OKX · 1H · RSI(7) · ADX(14)</span></div>
         <div id="tv-chart-container" style="flex:1;overflow:hidden;">
           <div class="tradingview-widget-container" style="height:100%;width:100%">
             <div id="tradingview_chart" style="height:100%;width:100%"></div>
@@ -381,15 +381,32 @@ td { padding: 4px 5px; }
               (function initTV() {
                 if (typeof TradingView === "undefined") { setTimeout(initTV, 200); return; }
                 new TradingView.widget({
-                  container_id: "tradingview_chart", symbol: "OKX:BTCUSD.P", interval: "60",
-                  timezone: "America/Argentina/Buenos_Aires", theme: "dark", style: "1",
-                  locale: "es", toolbar_bg: "#0e1115", enable_publishing: false,
-                  hide_top_toolbar: false, save_image: false, backgroundColor: "#080a0c",
-                  gridColor: "#1e2530", studies: [{ id: "RSI@tv-scripting-101!", inputs: { length: 7 } },
-                  { id: "ADX@tv-scripting-101!", inputs: { adxSmoothing: 14 } }],
-                  overrides: { "mainSeriesProperties.candleStyle.upColor": "#00e676",
+                  container_id: "tradingview_chart",
+                  symbol: "OKX:BTCUSD.P",
+                  interval: "60",
+                  timezone: "America/Argentina/Buenos_Aires",
+                  theme: "dark",
+                  style: "1",
+                  locale: "es",
+                  toolbar_bg: "#0e1115",
+                  enable_publishing: false,
+                  hide_top_toolbar: false,
+                  save_image: false,
+                  backgroundColor: "#080a0c",
+                  gridColor: "#1e2530",
+                  studies: [
+                    { id: "RSI@tv-scripting-101!", inputs: { length: 7 } },
+                    { id: "ADX@tv-scripting-101!", inputs: { adxSmoothing: 14 } }
+                  ],
+                  overrides: {
+                    "mainSeriesProperties.candleStyle.upColor": "#00e676",
                     "mainSeriesProperties.candleStyle.downColor": "#ff3d57",
-                    "paneProperties.background": "#080a0c" }, autosize: true
+                    "mainSeriesProperties.candleStyle.borderUpColor": "#00e676",
+                    "mainSeriesProperties.candleStyle.borderDownColor": "#ff3d57",
+                    "paneProperties.background": "#080a0c",
+                    "paneProperties.backgroundType": "solid"
+                  },
+                  autosize: true
                 });
               })();
             </script>
@@ -474,6 +491,7 @@ function updateCooldown(state) {
         cdText.style.color = "#64748b";
         if (cdDot) cdDot.style.background = "#4a5568";
     }
+    return remaining > 0;
 }
 
 async function fetchAll() {
@@ -528,22 +546,38 @@ async function fetchAll() {
       document.getElementById("h-adx").className = `h-ind-val ${adxHeaderClass(lastADX)}`;
     }
     
-    // INDICADORES (barra lateral): rojo/verde según condición, sin amarillo
+    // INDICADORES (barra lateral): 
+    // Verde = condición OK y SIN cooldown
+    // Amarillo = condición OK pero CON cooldown activo
+    // Rojo = condición no OK
+    const inCooldown = updateCooldown(state);
+    const rsiOk = lastRSI && (lastRSI <= 35 || lastRSI >= 70);
+    const adxOk = lastADX && lastADX >= 30;
+    
+    // RSI en barra lateral
     if (lastRSI) {
       document.getElementById("r-rsi").textContent = lastRSI.toFixed(1);
-      const rsiCls = (lastRSI <= 35 || lastRSI >= 70) ? "green" : "red";
-      document.getElementById("r-rsi").className = `ind-val ${rsiCls}`;
+      let rsiColor = "red";
+      if (rsiOk) {
+        rsiColor = inCooldown ? "yellow" : "green";
+      }
+      document.getElementById("r-rsi").className = `ind-val ${rsiColor}`;
       const rsiBar = document.getElementById("rsi-bar");
       rsiBar.style.width = `${Math.min(100,lastRSI)}%`;
-      rsiBar.style.background = (lastRSI <= 35 || lastRSI >= 70) ? "#00e676" : "#ff3d57";
+      rsiBar.style.background = rsiOk ? (inCooldown ? "#ffab00" : "#00e676") : "#ff3d57";
     }
+    
+    // ADX en barra lateral
     if (lastADX) {
       document.getElementById("r-adx").textContent = lastADX.toFixed(1);
-      const adxCls = lastADX >= 30 ? "green" : "red";
-      document.getElementById("r-adx").className = `ind-val ${adxCls}`;
+      let adxColor = "red";
+      if (adxOk) {
+        adxColor = inCooldown ? "yellow" : "green";
+      }
+      document.getElementById("r-adx").className = `ind-val ${adxColor}`;
       const adxBar = document.getElementById("adx-bar");
       adxBar.style.width = `${Math.min(100,lastADX*1.5)}%`;
-      adxBar.style.background = lastADX >= 30 ? "#00e676" : "#ff3d57";
+      adxBar.style.background = adxOk ? (inCooldown ? "#ffab00" : "#00e676") : "#ff3d57";
     }
 
     // Señal box
@@ -551,10 +585,13 @@ async function fetchAll() {
     if (state.position) {
       signalBox.className = "signal-box ready";
       signalBox.textContent = `● ${state.position} ABIERTA`;
-    } else if (lastRSI && (lastRSI<=35 || lastRSI>=70) && lastADX && lastADX>=30) {
+    } else if (rsiOk && adxOk && !inCooldown) {
       signalBox.className = "signal-box ready";
       signalBox.textContent = `● SEÑAL ${lastRSI<=35?"LONG":"SHORT"} — CONDICIÓN OK`;
-    } else if (lastRSI && (lastRSI<=35 || lastRSI>=70) && lastADX && lastADX>=25) {
+    } else if (rsiOk && adxOk && inCooldown) {
+      signalBox.className = "signal-box almost";
+      signalBox.textContent = `◐ SEÑAL ${lastRSI<=35?"LONG":"SHORT"} — ESPERANDO COOLDOWN`;
+    } else if (rsiOk && lastADX && lastADX >= 25) {
       signalBox.className = "signal-box almost";
       signalBox.textContent = `◐ RSI OK · ADX ${lastADX.toFixed(1)} (falta ${(30-lastADX).toFixed(1)})`;
     } else {
@@ -595,11 +632,10 @@ async function fetchAll() {
       document.getElementById("pos-pnl").textContent = "—";
     }
 
-    // Cooldown
+    // Cooldown en panel izquierdo
     const coolUntil = state.cooldown_until || 0;
     const rem = Math.max(0, Math.floor((coolUntil - Date.now()/1000) / 60));
     document.getElementById("pos-cool").textContent = rem > 0 ? `${rem} min` : "—";
-    updateCooldown(state);
 
     // Métricas panel izquierdo
     document.getElementById("m-return").textContent = `${ret>=0?"+":""}${ret.toFixed(2)}%`;
