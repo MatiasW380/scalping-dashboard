@@ -101,6 +101,17 @@ html, body {
 .status-pill.dead  { border-color: var(--red); color: var(--red); }
 .status-pill.dead  .status-dot { background: var(--red); }
 
+.cooldown-indicator {
+  display: flex; align-items: center; gap: 5px;
+  margin-left: 10px;
+  padding: 3px 9px;
+  border-radius: 20px;
+  border: 1px solid var(--bd);
+  background: var(--bg3);
+}
+.cooldown-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); }
+.cooldown-text { font-size: 8px; color: var(--muted2); }
+
 @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
 
 .h-update { font-size: 8px; color: var(--muted); }
@@ -368,6 +379,11 @@ td { padding: 4px 5px; }
         <span class="status-dot"></span>
         <span id="status-text">CONNECTING</span>
       </div>
+      <!-- ══ NUEVO INDICADOR DE COOLDOWN ══ -->
+      <div class="cooldown-indicator" id="cooldown-indicator">
+        <div class="cooldown-dot"></div>
+        <span class="cooldown-text" id="cooldown-text">CD: --</span>
+      </div>
       <span id="h-update" class="h-update">—</span>
     </div>
   </header>
@@ -597,6 +613,7 @@ async function fetchAll() {
     updateHeader(state);
     updatePosition(state);
     updateMetrics(state);
+    updateCooldown(state);  // ══ NUEVA FUNCIÓN ══
     updateTradesTable();
     updateSnapshots();
     updateEquityChart();
@@ -608,6 +625,33 @@ async function fetchAll() {
     pill.className = "status-pill dead";
     document.getElementById("status-text").textContent = "OFFLINE";
   }
+}
+
+// ══ NUEVA FUNCIÓN PARA COOLDOWN ══
+function updateCooldown(state) {
+    const coolUntil = state.cooldown_until || 0;
+    const now = Date.now() / 1000;
+    const remaining = Math.max(0, Math.floor((coolUntil - now) / 60));
+    const cdDiv = document.getElementById("cooldown-indicator");
+    const cdText = document.getElementById("cooldown-text");
+    const cdDot = cdDiv?.querySelector(".cooldown-dot");
+    
+    if (remaining > 0) {
+        cdText.textContent = `CD: ${remaining} min`;
+        cdText.style.color = "#ffab00";
+        if (cdDot) {
+            cdDot.style.background = "#ffab00";
+            cdDot.style.boxShadow = "0 0 4px #ffab00";
+        }
+        cdDiv.style.display = "flex";
+    } else {
+        cdText.textContent = "CD: --";
+        cdText.style.color = "#64748b";
+        if (cdDot) {
+            cdDot.style.background = "#4a5568";
+            cdDot.style.boxShadow = "none";
+        }
+    }
 }
 
 function updateStatus(s) {
@@ -646,223 +690,4 @@ function updateHeader(state) {
   if (lastADX !== null) {
     const el = document.getElementById("h-adx");
     el.textContent = lastADX.toFixed(1);
-    el.className = "h-ind-val " + (lastADX>=30?"green":lastADX>=25?"yellow":"muted");
-  }
-}
-
-function updatePosition(state) {
-  const sideEl = document.getElementById("pos-side");
-  const cool   = state.cooldown_until || 0;
-  const rem    = Math.max(0, Math.floor((cool - Date.now()/1000) / 60));
-  document.getElementById("pos-cool").textContent = rem > 0 ? `${rem} min` : "—";
-
-  if (!state.position) {
-    sideEl.textContent = "FLAT"; sideEl.className = "pos-side muted";
-    ["pos-entry","pos-tp","pos-sl","pos-dur","pos-rsi"].forEach(id =>
-      document.getElementById(id).textContent = "—");
-    const pnlEl = document.getElementById("pos-pnl");
-    pnlEl.textContent = "—"; pnlEl.className = "pos-item-val";
-    return;
-  }
-
-  const side = state.position, entry = state.entry_price||0, cur = state.last_price||entry;
-  const lev = 10, tpP = 4.0, slP = 1.2;
-  let tp, sl, pnl;
-  if (side === "LONG") {
-    tp = entry*(1+tpP/lev/100); sl = entry*(1-slP/lev/100);
-    pnl = (cur-entry)/entry*lev*100;
-  } else {
-    tp = entry*(1-tpP/lev/100); sl = entry*(1+slP/lev/100);
-    pnl = (entry-cur)/entry*lev*100;
-  }
-  const durMin = state.entry_time ? Math.floor((Date.now()/1000 - state.entry_time)/60) : 0;
-
-  sideEl.textContent = side; sideEl.className = "pos-side " + side.toLowerCase();
-  document.getElementById("pos-entry").textContent = `$${entry.toLocaleString("en-US",{maximumFractionDigits:0})}`;
-  document.getElementById("pos-tp").textContent    = `$${tp.toLocaleString("en-US",{maximumFractionDigits:0})}`;
-  document.getElementById("pos-sl").textContent    = `$${sl.toLocaleString("en-US",{maximumFractionDigits:0})}`;
-  document.getElementById("pos-dur").textContent   = `${durMin}m`;
-  document.getElementById("pos-rsi").textContent   = state.entry_rsi ? state.entry_rsi.toFixed(1) : "—";
-  const pnlEl = document.getElementById("pos-pnl");
-  pnlEl.textContent = `${pnl>=0?"+":""}${pnl.toFixed(2)}%`;
-  pnlEl.className   = "pos-item-val " + (pnl>=0?"green":"red");
-}
-
-function updateMetrics(state) {
-  const cap  = state.capital || 10000;
-  const ret  = (cap - 10000) / 10000 * 100;
-  const wins = state.total_wins||0, losses = state.total_losses||0;
-  const tot  = wins + losses;
-  const wr   = tot > 0 ? wins/tot*100 : 0;
-  const dd   = state.max_drawdown_pct || 0;
-  const pnl  = state.gross_pnl || 0;
-
-  sm("m-return", `${ret>=0?"+":""}${ret.toFixed(2)}%`, ret>=0?"green":"red");
-  sm("m-wr",     `${wr.toFixed(1)}%`, wr>=55?"green":wr>=45?"yellow":"red");
-  sm("m-cap",    `$${(cap/1000).toFixed(1)}k`, cap>=10000?"green":"red");
-  sm("m-pnl",    `${pnl>=0?"+":""}$${Math.abs(pnl).toFixed(0)}`, pnl>=0?"green":"red");
-  sm("m-dd",     `${dd.toFixed(1)}%`, dd<10?"green":dd<20?"yellow":"red");
-  document.getElementById("m-wl").innerHTML =
-    `<span class="green">${wins}</span>/<span class="red">${losses}</span>`;
-  document.getElementById("m-wl").className = "met-val";
-  document.getElementById("p-streak").textContent = state.max_consecutive_losses || 0;
-}
-
-function sm(id, val, cls) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  el.textContent = val; el.className = "met-val " + (cls||"");
-}
-
-function setEl(id, val, cls) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  el.textContent = val; el.className = "h-ind-val " + (cls||"");
-}
-
-function updateIndicators(state) {
-  if (state.position && state.entry_rsi != null) {
-    lastRSI = state.entry_rsi; lastADX = state.entry_adx;
-  } else if (allTrades && allTrades.length > 0) {
-    const last = allTrades[allTrades.length-1];
-    if (last.entry_rsi) lastRSI = last.entry_rsi;
-    if (last.entry_adx) lastADX = last.entry_adx;
-  }
-
-  if (lastRSI !== null) {
-    document.getElementById("r-rsi").textContent = lastRSI.toFixed(1);
-    document.getElementById("r-rsi").className   = "ind-val " + rsiCls(lastRSI);
-    const b = document.getElementById("rsi-bar");
-    b.style.width = Math.min(100,lastRSI) + "%";
-    b.style.background = lastRSI<=35?"var(--green)":lastRSI>=70?"var(--red)":"var(--muted)";
-  }
-  if (lastADX !== null) {
-    document.getElementById("r-adx").textContent = lastADX.toFixed(1);
-    document.getElementById("r-adx").className   =
-      "ind-val " + (lastADX>=30?"green":lastADX>=25?"yellow":"muted");
-    const b = document.getElementById("adx-bar");
-    b.style.width = Math.min(100,lastADX*1.5) + "%";
-    b.style.background = lastADX>=30?"var(--green)":lastADX>=25?"var(--yellow)":"var(--muted)";
-  }
-
-  const box = document.getElementById("signal-box");
-  const rOk = lastRSI!==null && (lastRSI<=35||lastRSI>=70);
-  const aOk = lastADX!==null && lastADX>=30;
-  const aC  = lastADX!==null && lastADX>=25 && lastADX<30;
-
-  if (state.position) {
-    box.className = "signal-box ready";
-    box.textContent = `● ${state.position} ABIERTA`;
-  } else if (rOk && aOk) {
-    box.className = "signal-box ready";
-    box.textContent = `● SEÑAL ${lastRSI<=35?"LONG":"SHORT"} — CONDICIÓN OK`;
-  } else if (rOk && aC) {
-    box.className = "signal-box almost";
-    box.textContent = `◐ RSI OK · ADX ${lastADX.toFixed(1)} (falta ${(30-lastADX).toFixed(1)})`;
-  } else {
-    box.className = "signal-box";
-    const rz = lastRSI!==null
-      ? (lastRSI<=35?"LONG ✓":lastRSI>=70?"SHORT ✓":`neutral ${lastRSI.toFixed(1)}`)
-      : "—";
-    box.textContent = `RSI ${rz} · ADX ${lastADX!==null?lastADX.toFixed(1):"—"}`;
-  }
-}
-
-function rsiCls(r) { return r<=35?"green":r>=70?"red":"muted"; }
-
-function updateTradesTable() {
-  const tb = document.getElementById("trades-tbody");
-  if (!allTrades || allTrades.length === 0) {
-    tb.innerHTML = `<tr><td colspan="6" style="color:var(--muted2);text-align:center;padding:10px">Sin operaciones</td></tr>`;
-    return;
-  }
-  tb.innerHTML = [...allTrades].reverse().slice(0,20).map(t => {
-    const cls = t.pnl_pct>=0?"green":"red";
-    return `<tr>
-      <td><span class="pill pill-${t.side.toLowerCase()}">${t.side}</span></td>
-      <td style="color:var(--muted2)">$${(t.entry_price||0).toLocaleString("en-US",{maximumFractionDigits:0})}</td>
-      <td style="color:var(--muted2)">${t.duration_min||0}m</td>
-      <td class="${cls}">${t.pnl_pct>=0?"+":""}${(t.pnl_pct||0).toFixed(1)}%</td>
-      <td style="color:var(--muted2)">${t.entry_rsi?t.entry_rsi.toFixed(1):"—"}</td>
-      <td><span class="pill pill-${(t.reason||"").toLowerCase()}">${t.reason||"—"}</span></td>
-    </tr>`;
-  }).join("");
-}
-
-function updateSnapshots() {
-  const cont = document.getElementById("snap-rows");
-  if (!allSnapshots || allSnapshots.length === 0) {
-    cont.innerHTML = `<div style="color:var(--muted2);font-size:9px;text-align:center;padding:6px">Sin datos</div>`;
-    return;
-  }
-  cont.innerHTML = [...allSnapshots].reverse().slice(0,5).map(s => {
-    const cls = s.return_total>=0?"green":"red";
-    return `<div class="snap-row">
-      <span class="snap-key">${s.date} · ${s.total_trades||0}t · WR ${(s.win_rate||0).toFixed(0)}%</span>
-      <span class="snap-val ${cls}">${s.return_total>=0?"+":""}${(s.return_total||0).toFixed(2)}%</span>
-    </div>`;
-  }).join("");
-}
-
-function updateEquityChart() {
-  if (!allSnapshots || allSnapshots.length === 0) return;
-  const labels = allSnapshots.map(s => s.date.slice(5));
-  const isC    = chartMode === "capital";
-  const data   = isC ? allSnapshots.map(s=>s.capital||10000) : allSnapshots.map(s=>s.return_total||0);
-  const base   = isC ? 10000 : 0;
-  const ctx    = document.getElementById("equityChart").getContext("2d");
-  if (equityChart) equityChart.destroy();
-  equityChart = new Chart(ctx, {
-    type: "line",
-    data: { labels, datasets:[{
-      data, borderColor:"#00e676", borderWidth:1.5,
-      pointRadius:2, pointBackgroundColor:"#00e676",
-      fill:{ target:{value:base}, above:"rgba(0,230,118,.07)", below:"rgba(255,61,87,.07)" },
-      tension:0.3,
-    }]},
-    options: {
-      responsive:true, maintainAspectRatio:false,
-      plugins:{
-        legend:{display:false},
-        tooltip:{
-          backgroundColor:"#0e1115", borderColor:"#1e2530", borderWidth:1,
-          titleColor:"#64748b", bodyColor:"#e2e8f0",
-          titleFont:{family:"'Space Mono'",size:8}, bodyFont:{family:"'Space Mono'",size:8},
-          callbacks:{ label: c => isC
-            ? ` $${c.parsed.y.toLocaleString("en-US",{minimumFractionDigits:2})}`
-            : ` ${c.parsed.y.toFixed(2)}%` }
-        }
-      },
-      scales:{
-        x:{ grid:{color:"rgba(30,37,48,.6)"}, ticks:{color:"#4a5568",font:{family:"'Space Mono'",size:7}} },
-        y:{ grid:{color:"rgba(30,37,48,.6)"}, ticks:{
-          color:"#4a5568", font:{family:"'Space Mono'",size:7},
-          callback: v => isC ? `$${(v/1000).toFixed(0)}k` : `${v.toFixed(0)}%`
-        }}
-      }
-    }
-  });
-}
-
-function setChartMode(mode) {
-  chartMode = mode;
-  document.getElementById("btn-cap").classList.toggle("active", mode==="capital");
-  document.getElementById("btn-ret").classList.toggle("active", mode==="return");
-  updateEquityChart();
-}
-
-function downloadCSV() {
-  if (!allTrades || allTrades.length === 0) return;
-  const h = ["timestamp","side","entry_price","exit_price","duration_min","entry_rsi","entry_adx","pnl_pct","pnl_usd","reason","capital_after"];
-  const rows = allTrades.map(t => h.map(k=>`"${t[k]!==undefined?t[k]:""}"`).join(","));
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob([[h.join(","),...rows].join("\n")],{type:"text/csv"}));
-  a.download = `trades_${new Date().toISOString().split("T")[0]}.csv`;
-  a.click();
-}
-
-fetchAll();
-setInterval(fetchAll, REFRESH);
-</script>
-</body>
-</html>
+    el.className = "h-ind-val " + (
