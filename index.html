@@ -824,13 +824,38 @@ function downloadCSV() {
 (function initTV() {
   if (typeof TradingView === "undefined") { setTimeout(initTV, 200); return; }
   new TradingView.widget({
-    container_id: "tradingview_chart", symbol: "OKX:BTCUSD.P", interval: "60",
-    timezone: "America/Argentina/Buenos_Aires", theme: "dark", style: "1",
-    locale: "es", toolbar_bg: "#0e1115", enable_publishing: false,
-    hide_top_toolbar: false, save_image: false, backgroundColor: "#080a0c",
-    gridColor: "#1e2530", studies: [{ id: "RSI@tv-scripting-101!", inputs: { length: 7 } },
-    { id: "ADX@tv-scripting-101!", inputs: { adxSmoothing: 14 } }],
-    overrides: { "mainSeriesProperties.candleStyle.upColor": "#00e676", "mainSeriesProperties.candleStyle.downColor": "#ff3d57", "paneProperties.background": "#080a0c" }, autosize: true
+    container_id: "tradingview_chart",
+    symbol: "OKX:BTCUSD.P",
+    interval: "60",
+    timezone: "America/Argentina/Buenos_Aires",
+    theme: "dark",
+    style: "1",
+    locale: "es",
+    toolbar_bg: "#0e1115",
+    enable_publishing: false,
+    hide_top_toolbar: false,
+    save_image: false,
+    backgroundColor: "#080a0c",
+    gridColor: "#1e2530",
+    studies: [
+      "RSI@tv-basicstudies-1",
+      "ADX@tv-basicstudies-1"
+    ],
+    studies_overrides: {
+      "study.RSI.length": 7,
+      "study.ADX.smoothing": 14,
+      "study.ADX.period": 14
+    },
+    overrides: {
+      "mainSeriesProperties.candleStyle.upColor": "#00e676",
+      "mainSeriesProperties.candleStyle.downColor": "#ff3d57",
+      "mainSeriesProperties.candleStyle.borderUpColor": "#00e676",
+      "mainSeriesProperties.candleStyle.borderDownColor": "#ff3d57",
+      "paneProperties.background": "#080a0c",
+      "paneProperties.backgroundType": "solid",
+      "volumePaneSize": "hidden"
+    },
+    autosize: true
   });
 })();
 
