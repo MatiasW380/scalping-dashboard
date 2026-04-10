@@ -7,8 +7,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Barlow+Condensed:wght@300;400;600;700;900&display=swap" rel="stylesheet"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<!-- TradingView Widget -->
-<script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
 <style>
 :root {
   --bg:     #080a0c;
@@ -494,7 +492,11 @@ td { padding: 4px 5px; }
     <!-- COLUMNA CENTRAL (desktop) -->
     <div class="col-center">
       <div class="tv-wrap"><div class="tv-header"><span class="tv-label">BTC-USD-SWAP · OKX · 1H · RSI(7) · ADX(14)</span></div>
-        <div id="tv-chart-container" style="flex:1;overflow:hidden;"></div>
+        <div id="tv-chart-container" style="flex:1;overflow:hidden;">
+          <div class="tradingview-widget-container" style="height:100%;width:100%">
+            <div id="tradingview_chart" style="height:100%;width:100%"></div>
+          </div>
+        </div>
       </div>
       <div class="equity-sec">
         <div class="equity-header"><span style="font-size:8px;letter-spacing:.14em;color:var(--muted2);font-weight:700">EQUITY</span>
@@ -517,8 +519,7 @@ td { padding: 4px 5px; }
       <div class="sec trades-sec">
         <div class="trades-header">ÚLTIMAS OPERACIONES<button class="csv-btn" onclick="downloadCSV()">↓ CSV</button></div>
         <div class="trades-wrap"><table><thead><tr><th>LADO</th><th>ENTRADA</th><th>DUR</th><th>PnL</th><th>RSI</th><th>RES</th></tr></thead>
-        <tbody id="desk-trades-tbody"><tr><td colspan="6">Sin operaciones</td></tr></tbody>
-        </table></div>
+        <tbody id="desk-trades-tbody"><tr><td colspan="6">Sin operaciones</td></tr></tbody></table></div>
       </div>
       <div class="sec"><div class="sec-label">HISTORIAL DIARIO</div><div id="desk-snap-rows"><div>Sin datos</div></div></div>
     </div>
@@ -571,8 +572,7 @@ td { padding: 4px 5px; }
     <div class="mobile-card">
       <div class="mobile-card-title">ÚLTIMAS OPERACIONES</div>
       <div class="mobile-trades"><table><thead><tr><th>LADO</th><th>ENTRADA</th><th>PnL</th><th>RES</th></tr></thead>
-      <tbody id="mobile-trades-body"><tr><td colspan="4">Sin operaciones</td></tr></tbody>
-      </table></div>
+      <tbody id="mobile-trades-body"><tr><td colspan="4">Sin operaciones</td></tr></tbody></table></div>
     </div>
   </div>
 </div>
@@ -582,7 +582,6 @@ const API_BASE = "https://matiasbarone.pythonanywhere.com";
 const REFRESH = 60000;
 let chartMode = "capital", equityChart = null;
 let allTrades = [], allSnapshots = [];
-let tvWidget = null;
 
 function rsiDesktopClass(r) { return (r <= 35 || r >= 70) ? "green" : "muted"; }
 function adxDesktopClass(a) { return a >= 30 ? "green" : "muted"; }
@@ -635,6 +634,7 @@ async function fetchAll() {
     const adxOk = lastADX && lastADX >= 30;
     
     // ═══ DESKTOP UPDATE ═══
+    // Precio desktop
     document.getElementById("desk-pos-side").textContent = state.position || "FLAT";
     document.getElementById("desk-pos-side").className = `pos-side ${state.position ? state.position.toLowerCase() : "muted"}`;
     if (state.position) {
@@ -695,16 +695,10 @@ async function fetchAll() {
     else if (rsiOk && adxOk && inCooldown) { deskSignal.className = "signal-box almost"; deskSignal.textContent = `◐ SEÑAL ${lastRSI<=35?"LONG":"SHORT"} — ESPERANDO`; }
     else { deskSignal.className = "signal-box"; deskSignal.textContent = `RSI ${lastRSI?.toFixed(1)||"—"} · ADX ${lastADX?.toFixed(1)||"—"}`; }
     
+    // Trades desktop
     const deskTbody = document.getElementById("desk-trades-tbody");
     if (!allTrades || allTrades.length === 0) deskTbody.innerHTML = `<tr><td colspan="6">Sin operaciones</td></tr>`;
-    else deskTbody.innerHTML = [...allTrades].reverse().slice(0,20).map(t => `<tr>
-          <td><span class="pill pill-${t.side.toLowerCase()}">${t.side}</span></td>
-          <td>$${(t.entry_price||0).toLocaleString()}</td>
-          <td>${t.duration_min||0}m</td>
-          <td class="${t.pnl_pct>=0?"green":"red"}">${t.pnl_pct>=0?"+":""}${(t.pnl_pct||0).toFixed(1)}%</td>
-          <td>${t.entry_rsi?.toFixed(1)||"—"}</td>
-          <td><span class="pill pill-${(t.reason||"").toLowerCase()}">${t.reason||"—"}</span></td>
-        </tr>`).join("");
+    else deskTbody.innerHTML = [...allTrades].reverse().slice(0,20).map(t => `<tr><td><span class="pill pill-${t.side.toLowerCase()}">${t.side}</span></td><td>$${(t.entry_price||0).toLocaleString()}</td><td>${t.duration_min||0}m</td><td class="${t.pnl_pct>=0?"green":"red"}">${t.pnl_pct>=0?"+":""}${(t.pnl_pct||0).toFixed(1)}%</td><td>${t.entry_rsi?.toFixed(1)||"—"}</td><td><span class="pill pill-${(t.reason||"").toLowerCase()}">${t.reason||"—"}</span></td></tr>`).join("");
     
     // ═══ MOBILE UPDATE ═══
     document.getElementById("mobile-price").textContent = price ? `$${price.toLocaleString()}` : "—";
@@ -717,6 +711,7 @@ async function fetchAll() {
     document.getElementById("mobile-pnl").textContent = `${state.gross_pnl>=0?"+":""}$${Math.abs(state.gross_pnl||0).toFixed(0)}`;
     document.getElementById("mobile-pnl").className = `mobile-met-value ${(state.gross_pnl||0)>=0?"green":"red"}`;
     
+    // Posición móvil
     const mobileSide = document.getElementById("mobile-pos-side");
     if (state.position) {
       mobileSide.textContent = state.position;
@@ -744,6 +739,7 @@ async function fetchAll() {
     }
     document.getElementById("mobile-cool").innerHTML = remainingSec>0 ? `⏰ Cooldown: ${Math.floor(remainingSec/60)} min` : "Cooldown: —";
     
+    // Indicadores móvil
     if (lastRSI) {
       document.getElementById("mobile-rsi").textContent = lastRSI.toFixed(1);
       let rsiColor = "muted";
@@ -770,19 +766,17 @@ async function fetchAll() {
     else if (rsiOk && adxOk && inCooldown) { mobileSignal.className = "signal-box almost"; mobileSignal.textContent = `◐ SEÑAL ${lastRSI<=35?"LONG":"SHORT"} — ESPERANDO`; }
     else { mobileSignal.className = "signal-box"; mobileSignal.textContent = `RSI ${lastRSI?.toFixed(1)||"—"} · ADX ${lastADX?.toFixed(1)||"—"}`; }
     
+    // Trades móvil
     const mobileTbody = document.getElementById("mobile-trades-body");
     if (!allTrades || allTrades.length === 0) mobileTbody.innerHTML = `<tr><td colspan="4">Sin operaciones</td></tr>`;
-    else mobileTbody.innerHTML = [...allTrades].reverse().slice(0,10).map(t => `<tr>
-          <td><span class="pill pill-${t.side.toLowerCase()}">${t.side}</span></td>
-          <td>$${(t.entry_price||0).toLocaleString()}</td>
-          <td class="${t.pnl_pct>=0?"green":"red"}">${t.pnl_pct>=0?"+":""}${(t.pnl_pct||0).toFixed(1)}%</td>
-          <td><span class="pill pill-${(t.reason||"").toLowerCase()}">${t.reason||"—"}</span></td>
-        </tr>`).join("");
+    else mobileTbody.innerHTML = [...allTrades].reverse().slice(0,10).map(t => `<tr><td><span class="pill pill-${t.side.toLowerCase()}">${t.side}</span></td><td>$${(t.entry_price||0).toLocaleString()}</td><td class="${t.pnl_pct>=0?"green":"red"}">${t.pnl_pct>=0?"+":""}${(t.pnl_pct||0).toFixed(1)}%</td><td><span class="pill pill-${(t.reason||"").toLowerCase()}">${t.reason||"—"}</span></td></tr>`).join("");
     
+    // Snapshots desktop
     const snapDiv = document.getElementById("desk-snap-rows");
     if (!allSnapshots || allSnapshots.length === 0) snapDiv.innerHTML = "<div>Sin datos</div>";
     else snapDiv.innerHTML = [...allSnapshots].reverse().slice(0,5).map(s => `<div class="snap-row"><span class="snap-key">${s.date} · ${s.total_trades||0}t · WR ${(s.win_rate||0).toFixed(0)}%</span><span class="snap-val ${s.return_total>=0?"green":"red"}">${s.return_total>=0?"+":""}${(s.return_total||0).toFixed(2)}%</span></div>`).join("");
     
+    // Equity chart
     if (allSnapshots && allSnapshots.length > 0) {
       const labels = allSnapshots.map(s => s.date.slice(5));
       const isCap = chartMode === "capital";
@@ -826,56 +820,22 @@ function downloadCSV() {
   a.click();
 }
 
-// Inicializar TradingView después de que el DOM esté listo
-function initTradingView() {
-  if (typeof TradingView === "undefined") {
-    setTimeout(initTradingView, 200);
-    return;
-  }
-  if (document.getElementById("tradingview_chart")) {
-    new TradingView.widget({
-      container_id: "tradingview_chart",
-      symbol: "OKX:BTCUSD.P",
-      interval: "60",
-      timezone: "America/Argentina/Buenos_Aires",
-      theme: "dark",
-      style: "1",
-      locale: "es",
-      toolbar_bg: "#0e1115",
-      enable_publishing: false,
-      hide_top_toolbar: false,
-      save_image: false,
-      backgroundColor: "#080a0c",
-      gridColor: "#1e2530",
-      studies: [
-        "RSI@tv-basicstudies-1",
-        "ADX@tv-basicstudies-1"
-      ],
-      studies_overrides: {
-        "study.RSI.length": 7,
-        "study.ADX.smoothing": 14,
-        "study.ADX.period": 14
-      },
-      overrides: {
-        "mainSeriesProperties.candleStyle.upColor": "#00e676",
-        "mainSeriesProperties.candleStyle.downColor": "#ff3d57",
-        "mainSeriesProperties.candleStyle.borderUpColor": "#00e676",
-        "mainSeriesProperties.candleStyle.borderDownColor": "#ff3d57",
-        "paneProperties.background": "#080a0c",
-        "paneProperties.backgroundType": "solid",
-        "volumePaneSize": "hidden"
-      },
-      autosize: true
-    });
-  }
-}
+// Inicializar TradingView solo en desktop
+(function initTV() {
+  if (typeof TradingView === "undefined") { setTimeout(initTV, 200); return; }
+  new TradingView.widget({
+    container_id: "tradingview_chart", symbol: "OKX:BTCUSD.P", interval: "60",
+    timezone: "America/Argentina/Buenos_Aires", theme: "dark", style: "1",
+    locale: "es", toolbar_bg: "#0e1115", enable_publishing: false,
+    hide_top_toolbar: false, save_image: false, backgroundColor: "#080a0c",
+    gridColor: "#1e2530", studies: [{ id: "RSI@tv-scripting-101!", inputs: { length: 7 } },
+    { id: "ADX@tv-scripting-101!", inputs: { adxSmoothing: 14 } }],
+    overrides: { "mainSeriesProperties.candleStyle.upColor": "#00e676", "mainSeriesProperties.candleStyle.downColor": "#ff3d57", "paneProperties.background": "#080a0c" }, autosize: true
+  });
+})();
 
-// Esperar a que el DOM cargue
-document.addEventListener("DOMContentLoaded", function() {
-  initTradingView();
-  fetchAll();
-  setInterval(fetchAll, REFRESH);
-});
+fetchAll();
+setInterval(fetchAll, REFRESH);
 </script>
 </body>
 </html>
