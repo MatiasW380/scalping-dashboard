@@ -102,7 +102,7 @@ body {
 /* ── MAIN GRID ───────────────────────────────────────────── */
 .main-grid {
   display: grid;
-  grid-template-columns: 220px 1fr 220px;
+  grid-template-columns: 300px minmax(0, 1fr) 300px;
   flex: 1;
   overflow: hidden;
 }
@@ -147,7 +147,7 @@ body {
 
 .pos-row {
   display: flex; justify-content: space-between;
-  padding: 4px 0; border-bottom: 1px solid var(--border); font-size: 11px;
+  padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 13px;
 }
 .pos-row:last-child { border-bottom: none; }
 .pos-key { color: var(--muted2); }
@@ -273,7 +273,7 @@ td { padding: 5px 6px; }
 /* ── PARAMS / SNAPS ──────────────────────────────────────── */
 .param-row, .snap-row {
   display: flex; justify-content: space-between;
-  padding: 4px 0; border-bottom: 1px solid var(--border); font-size: 11px;
+  padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 13px;
 }
 .param-row:last-child, .snap-row:last-child { border-bottom: none; }
 .param-key, .snap-key { color: var(--muted2); }
