@@ -331,7 +331,7 @@ html, body {
   flex-shrink: 0;
 }
 .tv-label { font-size: 8px; letter-spacing: 0.14em; color: var(--muted2); font-weight: 700; }
-#tv-chart-container { height: calc(100% - 26px); }
+#tv-chart-container { height: calc(100% - 26px); min-height: 400px; width: 100%; }
 
 .equity-sec {
   height: 150px;
@@ -516,8 +516,9 @@ td { padding: 4px 5px; }
 
     <!-- COLUMNA CENTRAL -->
     <div class="col-center">
-      <div class="tv-wrap"><div class="tv-header"><span class="tv-label">BTC-USD-SWAP · OKX · 1H</span></div>
-        <div id="tv-chart-container" style="flex:1;overflow:hidden;"></div>
+      <div class="tv-wrap">
+        <div class="tv-header"><span class="tv-label">BTC-USD-SWAP · OKX · 1H</span></div>
+        <div id="tv-chart-container" style="height:500px; width:100%;"></div>
       </div>
       <div class="equity-sec">
         <div class="equity-header"><span style="font-size:8px;letter-spacing:.14em;color:var(--muted2);font-weight:700">EQUITY</span>
@@ -589,9 +590,9 @@ td { padding: 4px 5px; }
 
     <div class="mobile-card">
       <div class="mobile-card-title">ÚLTIMAS OPERACIONES</div>
-      <div class="mobile-trades"><table><thead><tr><th>LADO</th><th>ENTRADA</th><th>PnL</th><th>RES</th></tr></thead>
+      <div class="mobile-trades"><tr><thead><tr><th>LADO</th><th>ENTRADA</th><th>PnL</th><th>RES</th></tr></thead>
       <tbody id="mobile-trades-body"><tr><td colspan="4">Sin operaciones</td></tr></tbody>
-      </table></div>
+    </table></div>
     </div>
   </div>
 </div>
