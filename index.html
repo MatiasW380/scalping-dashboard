@@ -92,12 +92,17 @@ html, body {
   border: 1px solid var(--bd);
   font-size: 9px; letter-spacing: 0.1em;
   background: var(--bg3);
+  transition: all 0.2s ease;
 }
 .status-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--muted); }
-.status-pill.alive { border-color: var(--green); color: var(--green); }
+.status-pill.alive { border-color: var(--green); color: var(--green); background: rgba(0,230,118,0.1); }
 .status-pill.alive .status-dot { background: var(--green); animation: blink 2s infinite; }
-.status-pill.dead  { border-color: var(--red); color: var(--red); }
-.status-pill.dead  .status-dot { background: var(--red); }
+.status-pill.dead  { border-color: var(--red); color: var(--red); background: rgba(255,61,87,0.15); animation: pulse-red 0.8s infinite; }
+.status-pill.dead  .status-dot { background: var(--red); animation: blink-red 0.5s infinite; }
+
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+@keyframes blink-red { 0%,100%{opacity:1} 50%{opacity:.2} }
+@keyframes pulse-red { 0%{background:rgba(255,61,87,0.15)} 50%{background:rgba(255,61,87,0.4)} 100%{background:rgba(255,61,87,0.15)} }
 
 .cooldown-indicator {
   display: flex; align-items: center; gap: 5px;
@@ -109,8 +114,6 @@ html, body {
 }
 .cooldown-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); }
 .cooldown-text { font-size: 8px; color: var(--muted2); }
-
-@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
 
 .h-update { font-size: 8px; color: var(--muted); }
 
@@ -427,7 +430,8 @@ td { padding: 4px 5px; }
       <div class="sec trades-sec">
         <div class="trades-header">ÚLTIMAS OPERACIONES<button class="csv-btn" onclick="downloadCSV()">↓ CSV</button></div>
         <div class="trades-wrap"><table><thead><tr><th>LADO</th><th>ENTRADA</th><th>DUR</th><th>PnL</th><th>RSI</th><th>RES</th></tr></thead>
-        <tbody id="trades-tbody"><tr><td colspan="6" style="color:var(--muted2);text-align:center;padding:10px">Sin operaciones</td></tr></tbody></table></div>
+        <tbody id="trades-tbody"><tr><td colspan="6" style="color:var(--muted2);text-align:center;padding:10px">Sin operaciones</td></tr></tbody>
+        </table></div>
       </div>
 
       <div class="sec" style="flex-shrink:0">
@@ -444,7 +448,16 @@ const REFRESH = 60000;
 let chartMode = "capital", equityChart = null;
 let allTrades = [], allSnapshots = [];
 
-function rsiCls(r) { if (r <= 35) return "green"; if (r >= 70) return "yellow"; return "muted"; }
+// RSI: verde si está en zona de señal (≤35 o ≥70), gris si neutral
+function rsiHeaderClass(r) {
+    if (r <= 35 || r >= 70) return "green";
+    return "muted";
+}
+
+// ADX: verde si ≥30, gris si no
+function adxHeaderClass(a) {
+    return a >= 30 ? "green" : "muted";
+}
 
 function updateCooldown(state) {
     const coolUntil = state.cooldown_until || 0;
@@ -496,29 +509,41 @@ async function fetchAll() {
     document.getElementById("h-dd").textContent = `${dd.toFixed(1)}%`;
     document.getElementById("h-dd").className = `h-ind-val ${dd<10?"green":dd<20?"yellow":"red"}`;
 
-    // RSI/ADX desde último trade
+    // RSI/ADX desde último trade o state
     let lastRSI = null, lastADX = null;
     if (allTrades && allTrades.length > 0) {
       lastRSI = allTrades[allTrades.length-1].entry_rsi;
       lastADX = allTrades[allTrades.length-1].entry_adx;
     }
+    
+    // HEADER RSI: verde si en zona de señal (≤35 o ≥70), gris si neutral
     if (lastRSI) {
       document.getElementById("h-rsi").textContent = lastRSI.toFixed(1);
-      document.getElementById("h-rsi").className = `h-ind-val ${rsiCls(lastRSI)}`;
-      document.getElementById("r-rsi").textContent = lastRSI.toFixed(1);
-      document.getElementById("r-rsi").className = `ind-val ${rsiCls(lastRSI)}`;
-      const rsiBar = document.getElementById("rsi-bar");
-      rsiBar.style.width = `${Math.min(100,lastRSI)}%`;
-      rsiBar.style.background = lastRSI<=35?"#00e676":lastRSI>=70?"#ffab00":"#4a5568";
+      document.getElementById("h-rsi").className = `h-ind-val ${rsiHeaderClass(lastRSI)}`;
     }
+    
+    // HEADER ADX: verde si ≥30
     if (lastADX) {
       document.getElementById("h-adx").textContent = lastADX.toFixed(1);
-      document.getElementById("h-adx").className = `h-ind-val ${lastADX>=30?"green":lastADX>=25?"yellow":"muted"}`;
+      document.getElementById("h-adx").className = `h-ind-val ${adxHeaderClass(lastADX)}`;
+    }
+    
+    // INDICADORES (barra lateral): rojo/verde según condición, sin amarillo
+    if (lastRSI) {
+      document.getElementById("r-rsi").textContent = lastRSI.toFixed(1);
+      const rsiCls = (lastRSI <= 35 || lastRSI >= 70) ? "green" : "red";
+      document.getElementById("r-rsi").className = `ind-val ${rsiCls}`;
+      const rsiBar = document.getElementById("rsi-bar");
+      rsiBar.style.width = `${Math.min(100,lastRSI)}%`;
+      rsiBar.style.background = (lastRSI <= 35 || lastRSI >= 70) ? "#00e676" : "#ff3d57";
+    }
+    if (lastADX) {
       document.getElementById("r-adx").textContent = lastADX.toFixed(1);
-      document.getElementById("r-adx").className = `ind-val ${lastADX>=30?"green":lastADX>=25?"yellow":"muted"}`;
+      const adxCls = lastADX >= 30 ? "green" : "red";
+      document.getElementById("r-adx").className = `ind-val ${adxCls}`;
       const adxBar = document.getElementById("adx-bar");
       adxBar.style.width = `${Math.min(100,lastADX*1.5)}%`;
-      adxBar.style.background = lastADX>=30?"#00e676":lastADX>=25?"#ffab00":"#4a5568";
+      adxBar.style.background = lastADX >= 30 ? "#00e676" : "#ff3d57";
     }
 
     // Señal box
@@ -635,12 +660,16 @@ async function fetchAll() {
     }
 
     document.getElementById("h-update").textContent = new Date().toLocaleTimeString("es-AR");
-    document.getElementById("status-pill").className = "status-pill alive";
+    // Estado ACTIVO
+    const statusPill = document.getElementById("status-pill");
+    statusPill.className = "status-pill alive";
     document.getElementById("status-text").textContent = "ACTIVO";
   } catch(e) {
     console.error(e);
-    document.getElementById("status-pill").className = "status-pill dead";
-    document.getElementById("status-text").textContent = "OFFLINE";
+    // Estado DESCONECTADO - rojo titilante que llama la atención
+    const statusPill = document.getElementById("status-pill");
+    statusPill.className = "status-pill dead";
+    document.getElementById("status-text").textContent = "DESCONECTADO";
   }
 }
 
