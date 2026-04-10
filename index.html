@@ -591,4 +591,79 @@ async function fetchAll() {
     document.getElementById("p-streak").textContent = state.max_consecutive_losses || 0;
 
     // Trades tabla
-    const tbody = document
+    const tbody = document.getElementById("trades-tbody");
+    if (!allTrades || allTrades.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="6" style="color:var(--muted2);text-align:center;padding:10px">Sin operaciones</td></tr>`;
+    } else {
+      tbody.innerHTML = [...allTrades].reverse().slice(0,20).map(t => `
+        <tr>
+          <td><span class="pill pill-${t.side.toLowerCase()}">${t.side}</span></td>
+          <td>$${(t.entry_price||0).toLocaleString("en-US",{maximumFractionDigits:0})}</td>
+          <td>${t.duration_min||0}m</td>
+          <td class="${t.pnl_pct>=0?"green":"red"}">${t.pnl_pct>=0?"+":""}${(t.pnl_pct||0).toFixed(1)}%</td>
+          <td>${t.entry_rsi?t.entry_rsi.toFixed(1):"—"}</td>
+          <td><span class="pill pill-${(t.reason||"").toLowerCase()}">${t.reason||"—"}</span></td>
+        </tr>
+      `).join("");
+    }
+
+    // Snapshots
+    const snapDiv = document.getElementById("snap-rows");
+    if (!allSnapshots || allSnapshots.length === 0) {
+      snapDiv.innerHTML = `<div style="color:var(--muted2);font-size:9px;text-align:center;padding:6px">Sin datos</div>`;
+    } else {
+      snapDiv.innerHTML = [...allSnapshots].reverse().slice(0,5).map(s => `
+        <div class="snap-row">
+          <span class="snap-key">${s.date} · ${s.total_trades||0}t · WR ${(s.win_rate||0).toFixed(0)}%</span>
+          <span class="snap-val ${s.return_total>=0?"green":"red"}">${s.return_total>=0?"+":""}${(s.return_total||0).toFixed(2)}%</span>
+        </div>
+      `).join("");
+    }
+
+    // Equity chart
+    if (allSnapshots && allSnapshots.length > 0) {
+      const labels = allSnapshots.map(s => s.date.slice(5));
+      const isCap = chartMode === "capital";
+      const data = isCap ? allSnapshots.map(s => s.capital||10000) : allSnapshots.map(s => s.return_total||0);
+      const ctx = document.getElementById("equityChart").getContext("2d");
+      if (equityChart) equityChart.destroy();
+      equityChart = new Chart(ctx, {
+        type: "line",
+        data: { labels, datasets: [{ data, borderColor: "#00e676", borderWidth: 1.5, pointRadius: 2, pointBackgroundColor: "#00e676", fill: false, tension: 0.3 }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => isCap ? ` $${c.parsed.y.toLocaleString("en-US",{minimumFractionDigits:2})}` : ` ${c.parsed.y.toFixed(2)}%` } } }, scales: { x: { ticks: { color: "#4a5568", font: { size: 7 } } }, y: { ticks: { color: "#4a5568", font: { size: 7 }, callback: v => isCap ? `$${(v/1000).toFixed(0)}k` : `${v.toFixed(0)}%` } } } }
+      });
+    }
+
+    document.getElementById("h-update").textContent = new Date().toLocaleTimeString("es-AR");
+    document.getElementById("status-pill").className = "status-pill alive";
+    document.getElementById("status-text").textContent = "ACTIVO";
+  } catch(e) {
+    console.error(e);
+    document.getElementById("status-pill").className = "status-pill dead";
+    document.getElementById("status-text").textContent = "OFFLINE";
+  }
+}
+
+function setChartMode(mode) {
+  chartMode = mode;
+  document.getElementById("btn-cap").classList.toggle("active", mode==="capital");
+  document.getElementById("btn-ret").classList.toggle("active", mode==="return");
+  fetchAll();
+}
+
+function downloadCSV() {
+  if (!allTrades || allTrades.length === 0) return;
+  const headers = ["timestamp","side","entry_price","exit_price","duration_min","entry_rsi","entry_adx","pnl_pct","pnl_usd","reason","capital_after"];
+  const rows = allTrades.map(t => headers.map(h => `"${t[h] !== undefined ? t[h] : ""}"`).join(","));
+  const blob = new Blob([[headers.join(","), ...rows].join("\n")], { type: "text/csv" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `trades_${new Date().toISOString().split("T")[0]}.csv`;
+  a.click();
+}
+
+fetchAll();
+setInterval(fetchAll, REFRESH);
+</script>
+</body>
+</html>
