@@ -492,7 +492,7 @@ async function fetchAll() {
     else deskTbody.innerHTML = [...allTrades].reverse().slice(0,20).map(t => `<tr>
           <td><span class="pill pill-${t.side.toLowerCase()}">${t.side}</span></td>
           <td>$${(t.entry_price||0).toLocaleString()}</td>
-          <td>${t.duration_min||0}m}?</span></td>
+          <td>${t.duration_min||0}m</td>
           <td class="${t.pnl_pct>=0?"green":"red"}">${t.pnl_pct>=0?"+":""}${(t.pnl_pct||0).toFixed(1)}%</td>
           <td>${t.entry_rsi?.toFixed(1)||"—"}</td>
           <td><span class="pill pill-${(t.reason||"").toLowerCase()}">${t.reason||"—"}</span></td>
