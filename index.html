@@ -582,7 +582,10 @@ function initTradingView() {
       save_image: false,
       backgroundColor: "#080a0c",
       gridColor: "#1e2530",
-      studies: [],
+      studies: [
+        { id: "RSI@tv-scripting-101!", inputs: { length: 7 } },
+        { id: "ADX@tv-scripting-101!", inputs: { adxSmoothing: 14 } },
+      ],
       overrides: {
         "mainSeriesProperties.candleStyle.upColor": "#00e676",
         "mainSeriesProperties.candleStyle.downColor": "#ff3d57",
@@ -593,7 +596,7 @@ function initTradingView() {
     });
   }
 }
-
+  
 document.addEventListener("DOMContentLoaded", function() {
   initTradingView();
   fetchAll();
