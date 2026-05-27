@@ -312,6 +312,42 @@ function updateCooldown(remainingSec) {
   return remaining > 0;
 }
 
+function calculateReturn(capital, trades) {
+  // Si no hay trades, return es 0%
+  if (!trades || trades.length === 0) {
+    return 0;
+  }
+  
+  // Buscar el primer trade con capital_before
+  // Ordenar trades por timestamp ascendente
+  const sortedTrades = [...trades].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+  
+  // Buscar el primer trade que tenga capital_before
+  let initialCapital = null;
+  for (let i = 0; i < sortedTrades.length; i++) {
+    if (sortedTrades[i].capital_before && sortedTrades[i].capital_before > 0) {
+      initialCapital = sortedTrades[i].capital_before;
+      break;
+    }
+  }
+  
+  // Si no se encuentra capital_before, usar el primer capital_after como base
+  if (!initialCapital && sortedTrades.length > 0 && sortedTrades[0].capital_after) {
+    // Restar el PnL del primer trade para obtener el capital antes
+    const firstTrade = sortedTrades[0];
+    initialCapital = firstTrade.capital_after - (firstTrade.pnl_usd || 0);
+  }
+  
+  // Si aún no hay initialCapital, return 0
+  if (!initialCapital || initialCapital <= 0) {
+    return 0;
+  }
+  
+  // Calcular return basado en el capital actual vs capital inicial real
+  const ret = (capital - initialCapital) / initialCapital * 100;
+  return ret;
+}
+
 async function fetchAll() {
   try {
     const [stR, trR, snR] = await Promise.all([
@@ -324,8 +360,9 @@ async function fetchAll() {
     allSnapshots = await snR.json();
 
     const cap = state.capital || 1000;
-    const initialCap = state.initial_capital || 1000;
-    const ret = (cap - initialCap) / initialCap * 100;
+    const initialCapFromState = state.initial_capital || 1000;
+    // Calcular return REAL basado en trades
+    const ret = calculateReturn(cap, allTrades);
     const wins = state.total_wins || 0, losses = state.total_losses || 0;
     const tot = wins + losses;
     const wr = tot > 0 ? wins/tot*100 : 0;
@@ -336,7 +373,6 @@ async function fetchAll() {
     const coolUntil = state.cooldown_until || 0;
     const remainingSec = coolUntil - Date.now()/1000;
     const inCooldown = updateCooldown(remainingSec);
-    // NUEVOS THRESHOLDS: RSI <30 para LONG, >70 para SHORT; ADX >18 para cruce
     const rsiOk = currentRSI && (currentRSI <= 30 || currentRSI >= 70);
     const adxOk = currentADX && currentADX >= 18;
     const adxTrendOk = currentADX && currentADX >= 35;
@@ -395,7 +431,7 @@ async function fetchAll() {
       mobileFill.style.background = adxOk ? (inCooldown ? "#ffab00" : "#00e676") : "#ff3d57";
     }
 
-    // SEÑAL - actualizada con nuevos thresholds
+    // SEÑAL
     const deskSignal = document.getElementById("desk-signal-box");
     const mobileSignal = document.getElementById("mobile-signal-box");
     if (state.position) {
@@ -461,7 +497,7 @@ async function fetchAll() {
     document.getElementById("desk-m-wl").innerHTML = `<span class="green">${wins}</span>/<span class="red">${losses}</span>`;
     document.getElementById("desk-p-streak").textContent = state.max_consecutive_losses || 0;
 
-    // POSICIÓN - con nuevos valores de TP/SL (1.5% y 0.8%)
+    // POSICIÓN
     if (state.position) {
       const side = state.position;
       document.getElementById("desk-pos-side").textContent = side;
@@ -514,7 +550,7 @@ async function fetchAll() {
           <td class="${t.pnl_pct>=0?"green":"red"}">${t.pnl_pct>=0?"+":""}${(t.pnl_pct||0).toFixed(1)}%</td>
           <td>${t.entry_rsi?.toFixed(1)||"—"}</td>
           <td><span class="pill pill-${(t.reason||"").toLowerCase()}">${t.reason||"—"}</span></td>
-        </tr>`).join("");
+        </table>`).join("");
     
     const mobileTbody = document.getElementById("mobile-trades-body");
     if (!allTrades || allTrades.length === 0) mobileTbody.innerHTML = `<tr><td colspan="4">Sin operaciones</td></tr>`;
@@ -571,7 +607,7 @@ function setChartMode(mode) {
 
 function downloadCSV() {
   if (!allTrades || allTrades.length === 0) return;
-  const headers = ["timestamp","side","entry_price","exit_price","duration_min","entry_rsi","entry_adx","pnl_pct","pnl_usd","reason","capital_after"];
+  const headers = ["timestamp","side","entry_price","exit_price","duration_min","entry_rsi","entry_adx","pnl_pct","pnl_usd","reason","capital_before","capital_after"];
   const rows = allTrades.map(t => headers.map(h => `"${t[h] !== undefined ? t[h] : ""}"`).join(","));
   const blob = new Blob([[headers.join(","), ...rows].join("\n")], { type: "text/csv" });
   const a = document.createElement("a");
