@@ -53,6 +53,7 @@ html, body { width: 100%; min-height: 100vh; background: var(--bg); color: var(-
   border: 1px solid var(--bd); background: var(--bg3); font-size: 8px;
 }
 .cooldown-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--muted); }
+.cooldown-badge.active .cooldown-dot { background: var(--yellow); animation: blink 1s infinite; }
 .h-update { font-size: 7px; color: var(--muted); }
 .desktop-layout { display: none; grid-template-columns: 280px 1fr 280px; gap: 0; flex: 1; overflow: hidden; }
 .mobile-layout { display: flex; flex-direction: column; gap: 12px; padding: 12px; overflow-y: auto; flex: 1; }
@@ -144,7 +145,8 @@ td { padding: 4px 5px; }
 .pill-short, .pill-SHORT, .pill-sell { background: rgba(255,61,87,.15); color: var(--red); }
 .pill-TRAILING_STOP { background: rgba(255,171,0,.15); color: var(--yellow); }
 .pill-BREAKEVEN { background: rgba(0,230,118,.1); color: var(--green); }
-.pill-TP/SL_OKX { background: rgba(100,116,139,.2); color: var(--muted2); }
+.pill-TP, .pill-SL_INICIAL { background: rgba(100,116,139,.2); color: var(--muted2); }
+.pill-MANUAL_CLOSE { background: rgba(255,61,87,.2); color: var(--red); }
 .snap-row { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid var(--bd); font-size: 10px; }
 .snap-row:last-child { border-bottom: none; }
 .snap-key { color: var(--muted2); }
@@ -156,6 +158,25 @@ td { padding: 4px 5px; }
 @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
 @media (min-width: 900px) { .mobile-layout { display: none; } .desktop-layout { display: grid; } .root { height: 100vh; overflow: hidden; } }
 @media (max-width: 899px) { .desktop-layout { display: none; } .mobile-layout { display: flex; } }
+.trailing-indicator {
+    display: inline-block;
+    font-size: 8px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    margin-top: 2px;
+    background: var(--bg3);
+    border: 1px solid var(--bd);
+    color: var(--muted2);
+}
+.trailing-indicator.active {
+    border-color: var(--yellow);
+    color: var(--yellow);
+    background: rgba(255,171,0,0.1);
+}
+.trailing-indicator.inactive {
+    border-color: var(--muted);
+    color: var(--muted2);
+}
 </style>
 </head>
 <body>
@@ -190,11 +211,16 @@ td { padding: 4px 5px; }
           <div class="pos-item"><div class="pos-item-label">ENTRADA</div><div class="pos-item-val" id="desk-pos-entry">—</div></div>
           <div class="pos-item"><div class="pos-item-label">PnL FLOTANTE</div><div class="pos-item-val" id="desk-pos-pnl">—</div></div>
           <div class="pos-item"><div class="pos-item-label green">TAKE PROFIT</div><div class="pos-item-val green" id="desk-pos-tp">—</div></div>
-          <div class="pos-item"><div class="pos-item-label red">STOP LOSS</div><div class="pos-item-val red" id="desk-pos-sl">—</div></div>
+          <div class="pos-item"><div class="pos-item-label red">STOP LOSS</div><div class="pos-item-val red" id="desk-pos-sl">—</div>
+            <div style="font-size:7px;color:var(--muted2)" id="desk-pos-sl-tag">inicial</div>
+          </div>
           <div class="pos-item"><div class="pos-item-label">DURACIÓN</div><div class="pos-item-val muted" id="desk-pos-dur">—</div></div>
           <div class="pos-item"><div class="pos-item-label">CONTRATOS</div><div class="pos-item-val muted" id="desk-pos-sz">—</div></div>
         </div>
-        <div style="margin-top:6px;font-size:10px;color:var(--muted2)">Cooldown: <span id="desk-pos-cool" style="color:var(--yellow)">—</span></div>
+        <div style="margin-top:6px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px;">
+          <span style="font-size:10px;color:var(--muted2)">Cooldown: <span id="desk-pos-cool" style="color:var(--yellow)">—</span></span>
+          <span id="desk-trailing-indicator" class="trailing-indicator inactive">TRAILING ✗</span>
+        </div>
       </div>
       <div class="sec"><div class="sec-label">RENDIMIENTO</div>
         <div class="metrics-grid">
@@ -207,16 +233,19 @@ td { padding: 4px 5px; }
         </div>
       </div>
       <div class="sec" style="flex:1"><div class="sec-label">PARÁMETROS ESTRATEGIA · CRUCE</div>
-        <div class="p-row"><span class="p-key">TP / SL</span><span class="p-val green">4.0% / 2.0%</span></div>
-        <div class="p-row"><span class="p-key">Breakeven</span><span class="p-val muted">0.6%</span></div>
-        <div class="p-row"><span class="p-key">Trailing</span><span class="p-val muted">0.3% / 0.2%</span></div>
+        <div class="p-row"><span class="p-key">TP / SL</span><span class="p-val green">5.0% / 1.5%</span></div>
+        <div class="p-row"><span class="p-key">Breakeven</span><span class="p-val muted">1.2%</span></div>
+        <div class="p-row"><span class="p-key">Trailing</span><span class="p-val muted">ATR × 1.8 (trigger 0.7%)</span></div>
         <div class="p-row"><span class="p-key">Leverage</span><span class="p-val">10x</span></div>
         <div class="p-row"><span class="p-key">Pos. Size</span><span class="p-val muted">20%</span></div>
-        <div class="p-row"><span class="p-key">Volumen mínimo</span><span class="p-val">≥ 0.50 (50%)</span></div>
-        <div class="p-row"><span class="p-key">ADX Cruce</span><span class="p-val">≥ 18 / ≤ 100</span></div>
-        <div class="p-row"><span class="p-key">EMA diff mínima</span><span class="p-val">≥ 0.01%</span></div>
+        <div class="p-row"><span class="p-key">Volumen mínimo</span><span class="p-val">≥ 0.02</span></div>
+        <div class="p-row"><span class="p-key">ADX Cruce</span><span class="p-val">≥ 10 / ≤ 100</span></div>
+        <div class="p-row"><span class="p-key">EMA diff mínima</span><span class="p-val">≥ 0.10%</span></div>
         <div class="p-row"><span class="p-key">EMA5 slope LONG</span><span class="p-val">&gt; -10</span></div>
         <div class="p-row"><span class="p-key">EMA5 slope SHORT</span><span class="p-val">&lt; 10</span></div>
+        <div class="p-row"><span class="p-key">Cooldown</span><span class="p-val">3 velas (45 min)</span></div>
+        <div class="p-row"><span class="p-key">Time-based exit</span><span class="p-val">4 horas</span></div>
+        <div class="p-row"><span class="p-key">Protección beneficio</span><span class="p-val">+10% mínimo si llega a +15%</span></div>
       </div>
     </div>
 
@@ -238,9 +267,9 @@ td { padding: 4px 5px; }
           <div class="bar-track"><div class="bar-fill" id="desk-adx-bar" style="width:0%"></div><div class="bar-mark" style="left:18%"><span class="bar-mark-lbl">18↑</span></div><div class="bar-mark" style="left:100%"><span class="bar-mark-lbl">100↑↑</span></div></div></div>
         
         <div class="filters-block"><div class="sec-label" style="margin-top:8px">FILTROS CRUCE</div>
-          <div class="filter-row"><span class="filter-name">Volumen ratio (min 0.50)</span><span id="desk-vol-ratio-val" class="filter-val">—</span></div>
+          <div class="filter-row"><span class="filter-name">Volumen ratio (min 0.02)</span><span id="desk-vol-ratio-val" class="filter-val">—</span></div>
           <div class="filter-bar-track"><div class="filter-bar-fill" id="desk-vol-bar" style="width:0%"></div></div>
-          <div class="filter-row"><span class="filter-name">EMA diff % (min 0.01%)</span><span id="desk-ema-diff-val" class="filter-val">—</span></div>
+          <div class="filter-row"><span class="filter-name">EMA diff % (min 0.10%)</span><span id="desk-ema-diff-val" class="filter-val">—</span></div>
           <div class="filter-bar-track"><div class="filter-bar-fill" id="desk-ema-diff-bar" style="width:0%"></div></div>
           <div class="filter-row"><span class="filter-name">EMA5 slope LONG (&gt; -10)</span><span id="desk-slope-val" class="filter-val">—</span></div>
           <div class="filter-bar-track"><div class="filter-bar-fill" id="desk-slope-bar" style="width:0%"></div></div>
@@ -270,11 +299,16 @@ td { padding: 4px 5px; }
         <div class="mobile-pos-item"><div class="mobile-pos-label">ENTRADA</div><div class="mobile-pos-value" id="mobile-pos-entry">—</div></div>
         <div class="mobile-pos-item"><div class="mobile-pos-label">PnL</div><div class="mobile-pos-value" id="mobile-pos-pnl">—</div></div>
         <div class="mobile-pos-item"><div class="mobile-pos-label green">TP</div><div class="mobile-pos-value green" id="mobile-pos-tp">—</div></div>
-        <div class="mobile-pos-item"><div class="mobile-pos-label red">SL</div><div class="mobile-pos-value red" id="mobile-pos-sl">—</div></div>
+        <div class="mobile-pos-item"><div class="mobile-pos-label red">SL</div><div class="mobile-pos-value red" id="mobile-pos-sl">—</div>
+          <div style="font-size:7px;color:var(--muted2)" id="mobile-pos-sl-tag">inicial</div>
+        </div>
         <div class="mobile-pos-item"><div class="mobile-pos-label">DURACIÓN</div><div class="mobile-pos-value" id="mobile-pos-dur">—</div></div>
         <div class="mobile-pos-item"><div class="mobile-pos-label">CONTRATOS</div><div class="mobile-pos-value" id="mobile-pos-sz">—</div></div>
       </div>
-      <div class="mobile-cool" id="mobile-cool">Cooldown: —</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px;margin-top:8px;">
+        <div class="mobile-cool" id="mobile-cool">Cooldown: —</div>
+        <span id="mobile-trailing-indicator" class="trailing-indicator inactive">TRAILING ✗</span>
+      </div>
     </div>
     <div class="mobile-card"><div class="mobile-card-title">MERCADO & FILTROS</div>
       <div style="text-align:center;margin-bottom:12px"><span style="font-size:10px;color:var(--muted2)">BTC/USD</span><div style="font-size:28px;font-weight:700" id="mobile-price">—</div></div>
@@ -284,9 +318,9 @@ td { padding: 4px 5px; }
         <div class="mobile-ind"><div class="mobile-ind-label">ADX (14)</div><div class="mobile-ind-value" id="mobile-adx">—</div>
           <div class="mobile-ind-bar"><div class="mobile-ind-fill" id="mobile-adx-fill" style="width:0%"></div></div></div>
       </div>
-      <div class="filter-row" style="justify-content:space-between;margin:8px 0"><span class="filter-name">Vol ratio (≥0.50)</span><span id="mobile-vol-ratio">—</span></div>
+      <div class="filter-row" style="justify-content:space-between;margin:8px 0"><span class="filter-name">Vol ratio (≥0.02)</span><span id="mobile-vol-ratio">—</span></div>
       <div class="filter-bar-track"><div class="filter-bar-fill" id="mobile-vol-bar" style="width:0%"></div></div>
-      <div class="filter-row" style="justify-content:space-between;margin:8px 0"><span class="filter-name">EMA diff (≥0.01%)</span><span id="mobile-ema-diff">—</span></div>
+      <div class="filter-row" style="justify-content:space-between;margin:8px 0"><span class="filter-name">EMA diff (≥0.10%)</span><span id="mobile-ema-diff">—</span></div>
       <div class="filter-bar-track"><div class="filter-bar-fill" id="mobile-ema-diff-bar" style="width:0%"></div></div>
       <div class="filter-row" style="justify-content:space-between;margin:8px 0"><span class="filter-name">EMA5 slope (LONG&gt;-10)</span><span id="mobile-slope">—</span></div>
       <div class="filter-bar-track"><div class="filter-bar-fill" id="mobile-slope-bar" style="width:0%"></div></div>
@@ -343,12 +377,13 @@ async function fetchAll() {
       fetch(`${API_BASE}/api/state`),
       fetch(`${API_BASE}/api/trades`),
       fetch(`${API_BASE}/api/snapshots`),
-      fetch(`${API_BASE}/api/indicators`).catch(() => null)
+      fetch(`${API_BASE}/api/btc/dynamic`).catch(() => null)
     ]);
     const state = await stR.json();
     allTrades = await trR.json();
     allSnapshots = await snR.json();
-    if (indR && indR.ok) currentIndicators = await indR.json();
+    let dynamicData = {};
+    if (indR && indR.ok) dynamicData = await indR.json();
 
     const cap = state.capital || 1000;
     const ret = calculateReturn(cap, allTrades);
@@ -365,6 +400,11 @@ async function fetchAll() {
     const coolUntil = state.cooldown_until || 0;
     const remainingSec = coolUntil - Date.now()/1000;
     const inCooldown = remainingSec > 0;
+    
+    // Obtener SL dinámico y estado del trailing desde dynamicData
+    const dynamicSl = dynamicData.dynamic_sl_price;
+    const isTrailingActive = dynamicData.trailing_active || false;
+    const isBreakevenActive = dynamicData.sl_breakeven_activated || false;
     
     // Filtrar trades duplicados por misma entrada y hora cercana
     const uniqueTrades = [];
@@ -383,11 +423,16 @@ async function fetchAll() {
     document.getElementById("cooldown-text").textContent = remainingMin > 0 ? `CD: ${remainingMin} min` : "CD: --";
     document.getElementById("desk-pos-cool").textContent = remainingMin > 0 ? `${remainingMin} min` : "—";
     document.getElementById("mobile-cool").textContent = remainingMin > 0 ? `Cooldown: ${remainingMin} min` : "Cooldown: —";
+    if (remainingMin > 0) {
+      document.getElementById("cooldown-badge").classList.add("active");
+    } else {
+      document.getElementById("cooldown-badge").classList.remove("active");
+    }
     
-    // Condiciones de filtro para cruce
-    const volOk = volRatio !== undefined && volRatio !== null && volRatio >= 0.50;
-    const adxOk = currentADX !== undefined && currentADX !== null && currentADX >= 18 && currentADX <= 100;
-    const emaDiffOk = emaDiffPct !== undefined && emaDiffPct !== null && Math.abs(emaDiffPct) >= 0.01;
+    // Condiciones de filtro para cruce (actualizadas a la nueva estrategia)
+    const volOk = volRatio !== undefined && volRatio !== null && volRatio >= 0.02;
+    const adxOk = currentADX !== undefined && currentADX !== null && currentADX >= 10 && currentADX <= 100;
+    const emaDiffOk = emaDiffPct !== undefined && emaDiffPct !== null && Math.abs(emaDiffPct) >= 0.10;
     const canSignal = volOk && adxOk && emaDiffOk && !inCooldown && !state.position;
 
     // HEADER
@@ -424,7 +469,7 @@ async function fetchAll() {
 
     // FILTROS: Volumen ratio
     if (volRatio !== undefined && volRatio !== null) {
-      const volPercent = Math.min(100, (volRatio / 1.0) * 100);
+      const volPercent = Math.min(100, (volRatio / 0.20) * 100);
       document.getElementById("desk-vol-ratio-val").textContent = volRatio.toFixed(3);
       document.getElementById("mobile-vol-ratio").textContent = volRatio.toFixed(3);
       const volBar = document.getElementById("desk-vol-bar");
@@ -435,10 +480,10 @@ async function fetchAll() {
       if (mobileVolBar) mobileVolBar.style.background = volOk ? (inCooldown ? "#ffab00" : "#00e676") : "#ff3d57";
     }
 
-    // FILTROS: EMA diff
+    // FILTROS: EMA diff (umbral 0.10%)
     if (emaDiffPct !== undefined && emaDiffPct !== null) {
       const absDiff = Math.abs(emaDiffPct);
-      const diffPercent = Math.min(100, absDiff * 100);
+      const diffPercent = Math.min(100, (absDiff / 0.20) * 100);
       document.getElementById("desk-ema-diff-val").textContent = `${emaDiffPct.toFixed(4)}%`;
       document.getElementById("mobile-ema-diff").textContent = `${emaDiffPct.toFixed(4)}%`;
       const diffBar = document.getElementById("desk-ema-diff-bar");
@@ -504,13 +549,13 @@ async function fetchAll() {
       mobileSignal.className = "signal-box almost";
       mobileSignal.textContent = msg;
     } else if (state.position === null && !volOk) {
-      const msg = `⛔ VOLUMEN BAJO — ratio ${volRatio?.toFixed(3)} < 0.50`;
+      const msg = `⛔ VOLUMEN BAJO — ratio ${volRatio?.toFixed(3)} < 0.02`;
       deskSignal.className = "signal-box blocked";
       deskSignal.textContent = msg;
       mobileSignal.className = "signal-box blocked";
       mobileSignal.textContent = msg;
     } else if (state.position === null && !adxOk) {
-      const msg = `⛔ ADX FUERA DE RANGO — ${currentADX?.toFixed(1)} (min 18, max 100)`;
+      const msg = `⛔ ADX FUERA DE RANGO — ${currentADX?.toFixed(1)} (min 10, max 100)`;
       deskSignal.className = "signal-box blocked";
       deskSignal.textContent = msg;
       mobileSignal.className = "signal-box blocked";
@@ -523,22 +568,67 @@ async function fetchAll() {
       mobileSignal.textContent = msg;
     }
 
-    // POSICIÓN ACTIVA
+    // --- POSICIÓN ACTIVA (CON SL DINÁMICO Y INDICADOR DE TRAILING) ---
     if (state.position && state.entry_price) {
       const side = state.position;
       const entry = state.entry_price;
-      const lev = 10, tpPct = 4.0, slPct = 2.0;
+      const lev = 10;
+      
+      // TP fijo (5.0%)
+      const tpPct = 5.0;
       let tp, sl;
       if (side === "LONG") {
         tp = entry * (1 + tpPct/lev/100);
-        sl = entry * (1 - slPct/lev/100);
+        // SL DINÁMICO: usar dynamicSl si existe, sino el SL inicial
+        if (dynamicSl && dynamicSl > 0) {
+          sl = dynamicSl;
+        } else {
+          const slPct = 1.5;
+          sl = entry * (1 - slPct/lev/100);
+        }
       } else {
         tp = entry * (1 - tpPct/lev/100);
-        sl = entry * (1 + slPct/lev/100);
+        if (dynamicSl && dynamicSl > 0) {
+          sl = dynamicSl;
+        } else {
+          const slPct = 1.5;
+          sl = entry * (1 + slPct/lev/100);
+        }
       }
+      
       const profitPct = side === "LONG" ? (price - entry)/entry*lev*100 : (entry - price)/entry*lev*100;
       const dur = state.entry_time ? Math.floor((Date.now()/1000 - state.entry_time)/60) : 0;
       const contracts = state.position_size_contracts || 0;
+      
+      // Actualizar indicador de Trailing
+      const deskTrailing = document.getElementById("desk-trailing-indicator");
+      const mobileTrailing = document.getElementById("mobile-trailing-indicator");
+      if (isTrailingActive) {
+        deskTrailing.textContent = "TRAILING ✓";
+        deskTrailing.className = "trailing-indicator active";
+        mobileTrailing.textContent = "TRAILING ✓";
+        mobileTrailing.className = "trailing-indicator active";
+      } else {
+        deskTrailing.textContent = "TRAILING ✗";
+        deskTrailing.className = "trailing-indicator inactive";
+        mobileTrailing.textContent = "TRAILING ✗";
+        mobileTrailing.className = "trailing-indicator inactive";
+      }
+      
+      // Mostrar SL con etiqueta dinámica
+      const deskSlTag = document.getElementById("desk-pos-sl-tag");
+      const mobileSlTag = document.getElementById("mobile-pos-sl-tag");
+      if (dynamicSl && dynamicSl > 0) {
+        deskSlTag.textContent = "🔄 dinámico (trailing/breakeven)";
+        deskSlTag.style.color = "#ffab00";
+        mobileSlTag.textContent = "🔄 dinámico";
+        mobileSlTag.style.color = "#ffab00";
+      } else {
+        deskSlTag.textContent = "inicial";
+        deskSlTag.style.color = "var(--muted2)";
+        mobileSlTag.textContent = "inicial";
+        mobileSlTag.style.color = "var(--muted2)";
+      }
       
       document.getElementById("desk-pos-side").textContent = side;
       document.getElementById("desk-pos-side").className = `pos-side ${side.toLowerCase()}`;
@@ -565,10 +655,19 @@ async function fetchAll() {
       document.getElementById("desk-pos-side").className = "pos-side muted";
       ["desk-pos-entry","desk-pos-tp","desk-pos-sl","desk-pos-dur","desk-pos-sz"].forEach(id => document.getElementById(id).textContent = "—");
       document.getElementById("desk-pos-pnl").textContent = "—";
+      document.getElementById("desk-pos-sl-tag").textContent = "inicial";
+      document.getElementById("desk-pos-sl-tag").style.color = "var(--muted2)";
+      document.getElementById("desk-trailing-indicator").textContent = "TRAILING ✗";
+      document.getElementById("desk-trailing-indicator").className = "trailing-indicator inactive";
+      
       document.getElementById("mobile-pos-side").textContent = "FLAT";
       document.getElementById("mobile-pos-side").className = "mobile-pos-side flat";
       ["mobile-pos-entry","mobile-pos-tp","mobile-pos-sl","mobile-pos-dur","mobile-pos-sz"].forEach(id => document.getElementById(id).textContent = "—");
       document.getElementById("mobile-pos-pnl").textContent = "—";
+      document.getElementById("mobile-pos-sl-tag").textContent = "inicial";
+      document.getElementById("mobile-pos-sl-tag").style.color = "var(--muted2)";
+      document.getElementById("mobile-trailing-indicator").textContent = "TRAILING ✗";
+      document.getElementById("mobile-trailing-indicator").className = "trailing-indicator inactive";
     }
 
     // TABLA DE TRADES (Desktop)
