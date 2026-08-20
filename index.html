@@ -89,12 +89,10 @@ html, body { width: 100vw; height: 100vh; background: var(--bg); color: var(--te
 .pos-item { background: var(--bg3); border: 1px solid var(--bd); border-radius: 8px; padding: 0.9vh 0.8vw; }
 .pos-item-label { font-size: clamp(9px, 0.65vw, 12px); color: var(--muted2); letter-spacing: 0.06em; margin-bottom: 2px; }
 .pos-item-val { font-size: clamp(15px, 1.15vw, 20px); font-weight: 700; }
-.trailing-row {
-  margin-top: 1.2vh; display: flex; justify-content: space-between; align-items: center;
-  padding: 0.9vh 0.9vw; border-radius: 8px; border: 1px solid var(--bd); background: var(--bg3); font-size: clamp(11px, 0.85vw, 14px);
-}
-.trailing-row.active { border-color: var(--yellow); background: var(--yellow-soft); color: var(--yellow); }
-.trailing-row .trailing-val { font-weight: 700; }
+.pos-item.wide { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; }
+.pos-item.wide .pos-item-val { font-size: clamp(17px, 1.4vw, 24px); }
+.pos-item.wide.active { border-color: var(--yellow); background: var(--yellow-soft); }
+.pos-item.wide.active .pos-item-val { color: var(--yellow); }
 .pos-cool { margin-top: 1vh; font-size: clamp(11px, 0.85vw, 14px); color: var(--muted2); text-align: center; }
 
 /* RENDIMIENTO */
@@ -208,9 +206,7 @@ td { padding: 0.7vh 8px; }
           <div class="pos-item"><div class="pos-item-label red">Stop loss</div><div class="pos-item-val red" id="desk-pos-sl">—</div></div>
           <div class="pos-item"><div class="pos-item-label">Duración</div><div class="pos-item-val muted" id="desk-pos-dur">—</div></div>
           <div class="pos-item"><div class="pos-item-label">Contratos</div><div class="pos-item-val muted" id="desk-pos-sz">—</div></div>
-        </div>
-        <div class="trailing-row inactive" id="desk-trailing-row">
-          <span>Trailing stop</span><span class="trailing-val" id="desk-trailing-val">Inactivo</span>
+          <div class="pos-item wide inactive" id="desk-trailing-row"><div class="pos-item-label yellow" id="desk-trailing-lbl">Trailing stop</div><div class="pos-item-val muted" id="desk-trailing-val">Inactivo</div></div>
         </div>
         <div class="pos-cool" id="desk-pos-cool-row" style="display:none">Cooldown activo — <span id="desk-pos-cool">—</span></div>
       </div>
@@ -286,9 +282,7 @@ td { padding: 0.7vh 8px; }
         <div class="pos-item"><div class="pos-item-label red">SL</div><div class="pos-item-val red" id="mobile-pos-sl">—</div></div>
         <div class="pos-item"><div class="pos-item-label">Duración</div><div class="pos-item-val" id="mobile-pos-dur">—</div></div>
         <div class="pos-item"><div class="pos-item-label">Contratos</div><div class="pos-item-val" id="mobile-pos-sz">—</div></div>
-      </div>
-      <div class="trailing-row inactive" id="mobile-trailing-row" style="margin-top:10px">
-        <span>Trailing stop</span><span class="trailing-val" id="mobile-trailing-val">Inactivo</span>
+        <div class="pos-item wide inactive" id="mobile-trailing-row"><div class="pos-item-label yellow" id="mobile-trailing-lbl">Trailing stop</div><div class="pos-item-val muted" id="mobile-trailing-val">Inactivo</div></div>
       </div>
       <div class="pos-cool" id="mobile-pos-cool-row" style="display:none">Cooldown activo — <span id="mobile-pos-cool">—</span></div>
     </div>
@@ -567,15 +561,17 @@ async function fetchAll() {
         pnlEl.className = `${pnlClass} ${profitPct >= 0 ? "green" : "red"}`;
       });
 
-      // Trailing con valor visible
+      // Trailing con valor visible y grande
       ["desk", "mobile"].forEach(p => {
         const row = document.getElementById(`${p}-trailing-row`);
         const val = document.getElementById(`${p}-trailing-val`);
         if (isTrailingActive && dynamicSl) {
           row.classList.add("active");
-          val.textContent = `Activo · SL $${dynamicSl.toLocaleString()}`;
+          val.classList.remove("muted");
+          val.textContent = `$${dynamicSl.toLocaleString()}`;
         } else {
           row.classList.remove("active");
+          val.classList.add("muted");
           val.textContent = "Inactivo";
         }
       });
@@ -595,7 +591,9 @@ async function fetchAll() {
       document.getElementById("mobile-pos-pnl").textContent = "—";
       ["desk", "mobile"].forEach(p => {
         document.getElementById(`${p}-trailing-row`).classList.remove("active");
-        document.getElementById(`${p}-trailing-val`).textContent = "Inactivo";
+        const val = document.getElementById(`${p}-trailing-val`);
+        val.classList.add("muted");
+        val.textContent = "Inactivo";
       });
       const coolRowDesk = document.getElementById("desk-pos-cool-row");
       const coolRowMobile = document.getElementById("mobile-pos-cool-row");
