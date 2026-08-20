@@ -119,17 +119,10 @@ html, body { width: 100vw; height: 100vh; background: var(--bg); color: var(--te
 .cond-val { font-weight: 700; }
 
 /* CHART */
-.tv-wrap { flex: 3; overflow: hidden; border-bottom: 1px solid var(--bd); min-height: 0; display: flex; flex-direction: column; }
+.tv-wrap { flex: 1; overflow: hidden; border-bottom: none; min-height: 0; display: flex; flex-direction: column; }
 .tv-header { display: flex; align-items: center; justify-content: space-between; padding: 1vh 1.2vw; border-bottom: 1px solid var(--bd); flex-shrink: 0; }
 .tv-label { font-size: clamp(10px, 0.75vw, 13px); letter-spacing: 0.14em; color: var(--muted2); font-weight: 700; }
 #tv-chart-container { flex: 1; width: 100%; min-height: 0; }
-.equity-sec { flex: 1.1; flex-shrink: 0; min-height: 0; padding: 1.2vh 1.2vw; display: flex; flex-direction: column; }
-.equity-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8vh; flex-shrink: 0; }
-.chart-toggle { display: flex; gap: 6px; }
-.toggle-btn { font-family: var(--mono); font-size: clamp(10px, 0.75vw, 13px); padding: 4px 12px; border-radius: 10px; border: 1px solid var(--bd); background: transparent; color: var(--muted2); cursor: pointer; }
-.toggle-btn.active { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
-.equity-chart-wrap { flex: 1; min-height: 0; }
-
 /* TRADES */
 .trades-sec { overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
 .trades-header { display: flex; justify-content: space-between; align-items: center; font-size: clamp(10px, 0.75vw, 13px); letter-spacing: 0.14em; color: var(--muted2); font-weight: 700; margin-bottom: 1vh; text-transform: uppercase; flex-shrink: 0; }
@@ -255,10 +248,6 @@ td { padding: 0.7vh 8px; }
       <div class="tv-wrap"><div class="tv-header"><span class="tv-label">BTC-USD · 15m</span></div>
         <div id="tv-chart-container"></div>
       </div>
-      <div class="equity-sec"><div class="equity-header"><span style="font-size:8px;letter-spacing:.14em;color:var(--muted2);font-weight:700">EQUITY</span>
-        <div class="chart-toggle"><button class="toggle-btn active" id="btn-cap" onclick="setChartMode('capital')">$ Capital</button><button class="toggle-btn" id="btn-ret" onclick="setChartMode('return')">% Return</button></div>
-      </div>
-      <div class="equity-chart-wrap"><canvas id="equityChart"></canvas></div></div>
     </div>
 
     <div class="col-right">
@@ -337,13 +326,6 @@ td { padding: 0.7vh 8px; }
       </div>
     </div>
 
-    <div class="mobile-card"><div class="mobile-card-title">Equity</div>
-      <div class="equity-header"><span></span>
-        <div class="chart-toggle"><button class="toggle-btn active" id="btn-cap-m" onclick="setChartMode('capital')">$ Capital</button><button class="toggle-btn" id="btn-ret-m" onclick="setChartMode('return')">% Return</button></div>
-      </div>
-      <div style="height:140px"><canvas id="equityChartMobile"></canvas></div>
-    </div>
-
     <div class="mobile-card"><div class="mobile-card-title">Historial diario</div>
       <div id="mobile-snap-rows"><div class="day-row"><span class="day-key">Sin datos</span></div></div>
     </div>
@@ -363,7 +345,6 @@ td { padding: 0.7vh 8px; }
 const API_BASE = "https://matiasbarone.pythonanywhere.com";
 const REFRESH = 60000;
 const GAUGE_CIRCUM = 264; // 2 * PI * 42, rounded
-let chartMode = "capital", equityChart = null, equityChartMobile = null;
 let allTrades = [], allSnapshots = [];
 let currentIndicators = {};
 
@@ -660,29 +641,6 @@ async function fetchAll() {
     renderDailyHistory("desk-snap-rows", allTrades);
     renderDailyHistory("mobile-snap-rows", allTrades);
 
-    // EQUITY CHART
-    if (allSnapshots && allSnapshots.length > 0) {
-      const labels = allSnapshots.map(s => s.date.slice(5));
-      const isCap = chartMode === "capital";
-      const data = isCap ? allSnapshots.map(s => s.capital || 10000) : allSnapshots.map(s => s.return_total || 0);
-      const chartOpts = {
-        type: "line",
-        data: { labels, datasets: [{ data, borderColor: "#3b82f6", borderWidth: 1.5, pointRadius: 2, pointBackgroundColor: "#3b82f6", fill: false, tension: 0.3 }] },
-        options: {
-          responsive: true, maintainAspectRatio: false,
-          plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => isCap ? ` $${c.parsed.y.toLocaleString()}` : ` ${c.parsed.y.toFixed(2)}%` } } },
-          scales: { x: { ticks: { color: "#4b5563", font: { size: 7 } } }, y: { ticks: { color: "#4b5563", font: { size: 7 }, callback: v => isCap ? `$${(v / 1000).toFixed(0)}k` : `${v.toFixed(0)}%` } } }
-        }
-      };
-      const ctx = document.getElementById("equityChart").getContext("2d");
-      if (equityChart) equityChart.destroy();
-      equityChart = new Chart(ctx, chartOpts);
-
-      const ctxM = document.getElementById("equityChartMobile").getContext("2d");
-      if (equityChartMobile) equityChartMobile.destroy();
-      equityChartMobile = new Chart(ctxM, chartOpts);
-    }
-
     document.getElementById("status-pill").className = "status-pill alive";
     document.getElementById("status-text").textContent = "ACTIVO";
   } catch (e) {
@@ -690,17 +648,6 @@ async function fetchAll() {
     document.getElementById("status-pill").className = "status-pill dead";
     document.getElementById("status-text").textContent = "DESCONECTADO";
   }
-}
-
-function setChartMode(mode) {
-  chartMode = mode;
-  document.getElementById("btn-cap").classList.toggle("active", mode === "capital");
-  document.getElementById("btn-ret").classList.toggle("active", mode === "return");
-  const btnCapM = document.getElementById("btn-cap-m");
-  const btnRetM = document.getElementById("btn-ret-m");
-  if (btnCapM) btnCapM.classList.toggle("active", mode === "capital");
-  if (btnRetM) btnRetM.classList.toggle("active", mode === "return");
-  fetchAll();
 }
 
 function downloadCSV() {
