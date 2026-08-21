@@ -89,10 +89,8 @@ html, body { width: 100vw; height: 100vh; background: var(--bg); color: var(--te
 .pos-item { background: var(--bg3); border: 1px solid var(--bd); border-radius: 8px; padding: 0.9vh 0.8vw; }
 .pos-item-label { font-size: clamp(9px, 0.65vw, 12px); color: var(--muted2); letter-spacing: 0.06em; margin-bottom: 2px; }
 .pos-item-val { font-size: clamp(15px, 1.15vw, 20px); font-weight: 700; }
-.pos-item.wide { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; }
-.pos-item.wide .pos-item-val { font-size: clamp(17px, 1.4vw, 24px); }
-.pos-item.wide.active { border-color: var(--yellow); background: var(--yellow-soft); }
-.pos-item.wide.active .pos-item-val { color: var(--yellow); }
+.pos-item.active { border-color: var(--yellow); background: var(--yellow-soft); }
+.pos-item.active .pos-item-val { color: var(--yellow); }
 .pos-cool { margin-top: 1vh; font-size: clamp(11px, 0.85vw, 14px); color: var(--muted2); text-align: center; }
 
 /* RENDIMIENTO */
@@ -126,11 +124,16 @@ html, body { width: 100vw; height: 100vh; background: var(--bg); color: var(--te
 .trades-header { display: flex; justify-content: space-between; align-items: center; font-size: clamp(10px, 0.75vw, 13px); letter-spacing: 0.14em; color: var(--muted2); font-weight: 700; margin-bottom: 1vh; text-transform: uppercase; flex-shrink: 0; }
 .csv-btn { font-size: clamp(10px, 0.7vw, 12px); padding: 4px 11px; border-radius: 8px; border: 1px solid var(--bd); background: transparent; color: var(--muted2); cursor: pointer; }
 .csv-btn:hover { border-color: var(--accent); color: var(--accent); }
-.trades-wrap { overflow: hidden; flex: 1; min-height: 0; }
-table { width: 100%; border-collapse: collapse; font-size: clamp(12px, 0.9vw, 15px); }
-thead th { padding: 5px 8px; text-align: left; color: var(--muted2); font-size: clamp(9px, 0.65vw, 12px); letter-spacing: 0.06em; border-bottom: 1px solid var(--bd); }
-tbody tr { border-bottom: 1px solid rgba(33,42,55,.5); }
-td { padding: 0.7vh 8px; }
+.trades-wrap { overflow: hidden; flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.trade-row {
+  display: grid; grid-template-columns: 0.85fr 1.15fr 1.15fr 1fr 0.9fr; align-items: center;
+  border-bottom: 1px solid rgba(33,42,55,.5); min-height: 0;
+}
+.trade-row-head { flex: 0 0 auto; color: var(--muted2); font-size: clamp(9px, 0.65vw, 12px); letter-spacing: 0.06em; padding: 0 6px 0.6vh; border-bottom: 1px solid var(--bd); }
+.trade-rows { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.trade-rows .trade-row { flex: 1; padding: 0 6px; font-size: clamp(11px, 0.85vw, 15px); }
+.trade-rows .trade-row:last-child { border-bottom: none; }
+.trade-empty { color: var(--muted2); grid-column: 1 / -1; }
 .pill { display: inline-block; padding: 3px 8px; border-radius: 8px; font-size: clamp(9px, 0.65vw, 12px); font-weight: 700; letter-spacing: 0.04em; }
 .pill-LONG, .pill-buy { background: var(--green-soft); color: var(--green); }
 .pill-SHORT, .pill-sell { background: var(--red-soft); color: var(--red); }
@@ -205,8 +208,7 @@ td { padding: 0.7vh 8px; }
           <div class="pos-item"><div class="pos-item-label green">Take profit</div><div class="pos-item-val green" id="desk-pos-tp">—</div></div>
           <div class="pos-item"><div class="pos-item-label red">Stop loss</div><div class="pos-item-val red" id="desk-pos-sl">—</div></div>
           <div class="pos-item"><div class="pos-item-label">Duración</div><div class="pos-item-val muted" id="desk-pos-dur">—</div></div>
-          <div class="pos-item"><div class="pos-item-label">Contratos</div><div class="pos-item-val muted" id="desk-pos-sz">—</div></div>
-          <div class="pos-item wide inactive" id="desk-trailing-row"><div class="pos-item-label yellow" id="desk-trailing-lbl">Trailing stop</div><div class="pos-item-val muted" id="desk-trailing-val">Inactivo</div></div>
+          <div class="pos-item" id="desk-trailing-row"><div class="pos-item-label yellow">Trailing stop</div><div class="pos-item-val muted" id="desk-trailing-val">Inactivo</div></div>
         </div>
         <div class="pos-cool" id="desk-pos-cool-row" style="display:none">Cooldown activo — <span id="desk-pos-cool">—</span></div>
       </div>
@@ -255,10 +257,10 @@ td { padding: 0.7vh 8px; }
       </div>
       <div class="sec trades-sec"><div class="trades-header">Últimas operaciones<button class="csv-btn" onclick="downloadCSV()">↓ CSV</button></div>
         <div class="trades-wrap">
-          <table>
-            <thead><tr><th>Lado</th><th>Entrada</th><th>Salida</th><th>Dur</th><th>PnL neto</th><th>Res</th></tr></thead>
-            <tbody id="desk-trades-tbody"><tr><td colspan="6">Sin operaciones</td></tr></tbody>
-          </table>
+          <div class="trade-row trade-row-head">
+            <span>Lado</span><span>Entrada</span><span>Salida</span><span>PnL</span><span>Res</span>
+          </div>
+          <div class="trade-rows" id="desk-trades-tbody"><div class="trade-row"><span class="trade-empty">Sin operaciones</span></div></div>
         </div>
       </div>
       <div class="sec"><div class="sec-label">Historial diario</div>
@@ -281,8 +283,7 @@ td { padding: 0.7vh 8px; }
         <div class="pos-item"><div class="pos-item-label green">TP</div><div class="pos-item-val green" id="mobile-pos-tp">—</div></div>
         <div class="pos-item"><div class="pos-item-label red">SL</div><div class="pos-item-val red" id="mobile-pos-sl">—</div></div>
         <div class="pos-item"><div class="pos-item-label">Duración</div><div class="pos-item-val" id="mobile-pos-dur">—</div></div>
-        <div class="pos-item"><div class="pos-item-label">Contratos</div><div class="pos-item-val" id="mobile-pos-sz">—</div></div>
-        <div class="pos-item wide inactive" id="mobile-trailing-row"><div class="pos-item-label yellow" id="mobile-trailing-lbl">Trailing stop</div><div class="pos-item-val muted" id="mobile-trailing-val">Inactivo</div></div>
+        <div class="pos-item" id="mobile-trailing-row"><div class="pos-item-label yellow">Trailing stop</div><div class="pos-item-val muted" id="mobile-trailing-val">Inactivo</div></div>
       </div>
       <div class="pos-cool" id="mobile-pos-cool-row" style="display:none">Cooldown activo — <span id="mobile-pos-cool">—</span></div>
     </div>
@@ -542,12 +543,11 @@ async function fetchAll() {
       }
       const profitPct = side === "LONG" ? (price - entry) / entry * lev * 100 : (entry - price) / entry * lev * 100;
       const dur = state.entry_time ? Math.floor((Date.now() / 1000 - state.entry_time) / 60) : 0;
-      const contracts = state.position_size_contracts || 0;
 
       [
-        ["desk", "desk-pos-side", "desk-pos-entry", "desk-pos-tp", "desk-pos-sl", "desk-pos-dur", "desk-pos-sz", "desk-pos-pnl", "pos-item-val"],
-        ["mobile", "mobile-pos-side", "mobile-pos-entry", "mobile-pos-tp", "mobile-pos-sl", "mobile-pos-dur", "mobile-pos-sz", "mobile-pos-pnl", "pos-item-val"]
-      ].forEach(([prefix, sideId, entryId, tpId, slId, durId, szId, pnlId, pnlClass]) => {
+        ["desk", "desk-pos-side", "desk-pos-entry", "desk-pos-tp", "desk-pos-sl", "desk-pos-dur", "desk-pos-pnl", "pos-item-val"],
+        ["mobile", "mobile-pos-side", "mobile-pos-entry", "mobile-pos-tp", "mobile-pos-sl", "mobile-pos-dur", "mobile-pos-pnl", "pos-item-val"]
+      ].forEach(([prefix, sideId, entryId, tpId, slId, durId, pnlId, pnlClass]) => {
         const sideEl = document.getElementById(sideId);
         sideEl.textContent = side;
         sideEl.className = `${prefix === "mobile" ? "mobile-pos-side" : "pos-side"} ${side.toLowerCase()}`;
@@ -555,7 +555,6 @@ async function fetchAll() {
         document.getElementById(tpId).textContent = `$${tp.toLocaleString()}`;
         document.getElementById(slId).textContent = `$${sl.toLocaleString()}`;
         document.getElementById(durId).textContent = `${dur}m`;
-        document.getElementById(szId).textContent = contracts;
         const pnlEl = document.getElementById(pnlId);
         pnlEl.textContent = `${profitPct >= 0 ? "+" : ""}${profitPct.toFixed(2)}%`;
         pnlEl.className = `${pnlClass} ${profitPct >= 0 ? "green" : "red"}`;
@@ -584,8 +583,8 @@ async function fetchAll() {
         el.textContent = "FLAT";
         el.className = id.startsWith("mobile") ? "mobile-pos-side flat" : "pos-side muted";
       });
-      ["desk-pos-entry", "desk-pos-tp", "desk-pos-sl", "desk-pos-dur", "desk-pos-sz",
-       "mobile-pos-entry", "mobile-pos-tp", "mobile-pos-sl", "mobile-pos-dur", "mobile-pos-sz"]
+      ["desk-pos-entry", "desk-pos-tp", "desk-pos-sl", "desk-pos-dur",
+       "mobile-pos-entry", "mobile-pos-tp", "mobile-pos-sl", "mobile-pos-dur"]
         .forEach(id => document.getElementById(id).textContent = "—");
       document.getElementById("desk-pos-pnl").textContent = "—";
       document.getElementById("mobile-pos-pnl").textContent = "—";
@@ -607,32 +606,36 @@ async function fetchAll() {
     }
 
     // TABLAS DE TRADES
+    const reasonLabels = {
+      "TP": "TP", "SL_INICIAL": "SL", "TRAILING_STOP": "TRAIL",
+      "BREAKEVEN": "BE", "MANUAL_CLOSE": "MANUAL", "TP_SL_OKX": "TP/SL"
+    };
     const rowsHtml = (limit) => [...uniqueTrades].reverse().slice(0, limit).map(t => {
       const pnlNeto = t.pnl_pct_neto !== undefined ? t.pnl_pct_neto : (t.pnl_pct || 0);
       const reasonClass = (t.reason || "TP_SL_OKX").replace(/\//g, "_");
-      return { t, pnlNeto, reasonClass };
+      const reasonLabel = reasonLabels[reasonClass] || reasonClass.replace(/_/g, " ").slice(0, 8);
+      return { t, pnlNeto, reasonClass, reasonLabel };
     });
 
     const deskTbody = document.getElementById("desk-trades-tbody");
     const deskRows = rowsHtml(6);
-    deskTbody.innerHTML = deskRows.length === 0 ? `<tr><td colspan="6">Sin operaciones</td></tr>` :
-      deskRows.map(({ t, pnlNeto, reasonClass }) => `<tr>
-        <td><span class="pill pill-${t.side}">${t.side}</span></td>
-        <td>$${(t.entry_price || 0).toLocaleString()}</td>
-        <td>$${(t.exit_price || 0).toLocaleString()}</td>
-        <td>${t.duration_min || 0}m</td>
-        <td class="${pnlNeto >= 0 ? "green" : "red"}">${pnlNeto >= 0 ? "+" : ""}${pnlNeto.toFixed(2)}%</td>
-        <td><span class="pill pill-${reasonClass}">${t.reason || "TP/SL"}</span></td>
-      </tr>`).join("");
+    deskTbody.innerHTML = deskRows.length === 0 ? `<div class="trade-row"><span class="trade-empty">Sin operaciones</span></div>` :
+      deskRows.map(({ t, pnlNeto, reasonClass, reasonLabel }) => `<div class="trade-row">
+        <span><span class="pill pill-${t.side}">${t.side}</span></span>
+        <span>$${(t.entry_price || 0).toLocaleString()}</span>
+        <span>$${(t.exit_price || 0).toLocaleString()}</span>
+        <span class="${pnlNeto >= 0 ? "green" : "red"}">${pnlNeto >= 0 ? "+" : ""}${pnlNeto.toFixed(2)}%</span>
+        <span><span class="pill pill-${reasonClass}">${reasonLabel}</span></span>
+      </div>`).join("");
 
     const mobileTbody = document.getElementById("mobile-trades-body");
     const mobileRows = rowsHtml(10);
     mobileTbody.innerHTML = mobileRows.length === 0 ? `<tr><td colspan="4">Sin operaciones</td></tr>` :
-      mobileRows.map(({ t, pnlNeto, reasonClass }) => `<tr>
+      mobileRows.map(({ t, pnlNeto, reasonClass, reasonLabel }) => `<tr>
         <td><span class="pill pill-${t.side}">${t.side}</span></td>
         <td>$${(t.entry_price || 0).toLocaleString()}</td>
         <td class="${pnlNeto >= 0 ? "green" : "red"}">${pnlNeto >= 0 ? "+" : ""}${pnlNeto.toFixed(2)}%</td>
-        <td><span class="pill pill-${reasonClass}">${(t.reason || "TP/SL").substring(0, 8)}</span></td>
+        <td><span class="pill pill-${reasonClass}">${reasonLabel}</span></td>
       </tr>`).join("");
 
     // HISTORIAL DIARIO — PnL del día, no acumulado
