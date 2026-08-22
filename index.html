@@ -143,11 +143,14 @@ html, body { width: 100vw; height: 100vh; background: var(--bg); color: var(--te
 .pill-MANUAL_CLOSE { background: var(--red-soft); color: var(--red); }
 
 /* HISTORIAL DIARIO */
-.day-row { display: flex; justify-content: space-between; align-items: center; padding: 0.9vh 0; border-bottom: 1px solid var(--bd); font-size: clamp(11px, 0.85vw, 14px); }
+.day-list { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+.day-row { display: flex; justify-content: space-between; align-items: center; padding: 0 0; border-bottom: 1px solid var(--bd); font-size: clamp(12px, 0.9vw, 16px); white-space: nowrap; }
+.day-list .day-row { flex: 1; min-height: 0; }
 .day-row:last-child { border-bottom: none; }
-.day-key { color: var(--muted2); }
-.day-key .day-meta { font-size: clamp(9px, 0.65vw, 12px); color: var(--muted); display: block; margin-top: 1px; }
-.day-val { font-weight: 700; font-family: var(--cond); font-size: clamp(16px, 1.3vw, 22px); }
+.day-date { color: var(--muted2); font-weight: 700; }
+.day-result { display: flex; align-items: baseline; gap: 12px; }
+.day-wl { font-size: clamp(10px, 0.75vw, 13px); color: var(--muted2); }
+.day-val { font-weight: 700; font-family: var(--cond); font-size: clamp(17px, 1.4vw, 24px); min-width: 3.2em; text-align: right; }
 
 /* INDICADORES */
 .ind-block { margin-bottom: 1.6vh; }
@@ -264,7 +267,7 @@ html, body { width: 100vw; height: 100vh; background: var(--bg); color: var(--te
         </div>
       </div>
       <div class="sec"><div class="sec-label">Historial diario</div>
-        <div id="desk-snap-rows"><div class="day-row"><span class="day-key">Sin datos</span></div></div>
+        <div class="day-list" id="desk-snap-rows"><div class="day-row"><span class="day-date">Sin datos</span></div></div>
       </div>
     </div>
   </div>
@@ -322,7 +325,7 @@ html, body { width: 100vw; height: 100vh; background: var(--bg); color: var(--te
     </div>
 
     <div class="mobile-card"><div class="mobile-card-title">Historial diario</div>
-      <div id="mobile-snap-rows"><div class="day-row"><span class="day-key">Sin datos</span></div></div>
+      <div class="day-list" id="mobile-snap-rows"><div class="day-row"><span class="day-date">Sin datos</span></div></div>
     </div>
 
     <div class="mobile-card"><div class="mobile-card-title">Últimas operaciones</div>
@@ -375,19 +378,22 @@ function buildDailyHistory(trades) {
   return Object.values(map).sort((a, b) => b.date.localeCompare(a.date));
 }
 
-function renderDailyHistory(elId, trades) {
+function renderDailyHistory(elId, trades, limit) {
   const el = document.getElementById(elId);
-  const days = buildDailyHistory(trades).slice(0, 7);
+  const days = buildDailyHistory(trades).slice(0, limit);
   if (days.length === 0) {
-    el.innerHTML = '<div class="day-row"><span class="day-key">Sin datos</span></div>';
+    el.innerHTML = '<div class="day-row"><span class="day-date">Sin datos</span></div>';
     return;
   }
   el.innerHTML = days.map(d => {
-    const sign = d.pnlUsd >= 0 ? "+" : "";
+    const sign = d.pnlUsd >= 0 ? "+" : "-";
     const cls = d.pnlUsd >= 0 ? "green" : "red";
     return `<div class="day-row">
-      <span class="day-key">${d.date}<span class="day-meta">${d.trades} op · ${d.wins}W/${d.losses}L</span></span>
-      <span class="day-val ${cls}">${sign}$${Math.abs(d.pnlUsd).toFixed(0)}</span>
+      <span class="day-date">${d.date}</span>
+      <span class="day-result">
+        <span class="day-wl">${d.wins}W/${d.losses}L</span>
+        <span class="day-val ${cls}">${sign}$${Math.abs(d.pnlUsd).toFixed(0)}</span>
+      </span>
     </div>`;
   }).join("");
 }
@@ -639,8 +645,8 @@ async function fetchAll() {
       </tr>`).join("");
 
     // HISTORIAL DIARIO — PnL del día, no acumulado
-    renderDailyHistory("desk-snap-rows", allTrades);
-    renderDailyHistory("mobile-snap-rows", allTrades);
+    renderDailyHistory("desk-snap-rows", allTrades, 6);
+    renderDailyHistory("mobile-snap-rows", allTrades, 10);
 
     document.getElementById("status-pill").className = "status-pill alive";
     document.getElementById("status-text").textContent = "ACTIVO";
