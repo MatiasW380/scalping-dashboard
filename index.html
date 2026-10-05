@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
-<title>BTC Scalping Bot · EMA 5/21</title>
+<title>MACD 4H Bot · BTC</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Barlow+Condensed:wght@300;400;600;700;900&display=swap" rel="stylesheet"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -141,6 +141,9 @@ html, body { width: 100vw; height: 100vh; background: var(--bg); color: var(--te
 .pill-BREAKEVEN { background: var(--green-soft); color: var(--green); }
 .pill-TP, .pill-SL_INICIAL { background: rgba(107,120,137,.15); color: var(--muted2); }
 .pill-MANUAL_CLOSE { background: var(--red-soft); color: var(--red); }
+.pill-STOP { background: var(--red-soft); color: var(--red); }
+.pill-TRAILING { background: var(--yellow-soft); color: var(--yellow); }
+.pill-CRUCE_CONTRARIO { background: var(--accent-soft); color: var(--accent); }
 
 /* HISTORIAL DIARIO */
 .day-list { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
@@ -180,21 +183,31 @@ html, body { width: 100vw; height: 100vh; background: var(--bg); color: var(--te
 
 @media (min-width: 900px) { .mobile-layout { display: none; } .desktop-layout { display: grid; } }
 @media (max-width: 899px) { .desktop-layout { display: none; } .mobile-layout { display: flex; overflow-y: auto; } html, body, .root { height: auto; min-height: 100vh; overflow: visible; } }
+@media (max-width: 899px) {
+  html, body, .root { width: 100%; overflow-x: hidden; }
+  .header { grid-template-columns: 1fr auto; padding: 10px 16px; gap: 8px; }
+  .h-center, .logo-sub, .h-update { display: none; }
+  .h-right { flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+  .cooldown-badge, .status-pill { padding: 4px 10px; font-size: 11px; }
+  .mobile-trades table { width: 100%; font-size: 12px; border-collapse: collapse; }
+  .mobile-trades th { text-align: left; color: var(--muted2); font-size: 10px; font-weight: 400; padding-bottom: 6px; }
+  .mobile-trades td { padding: 5px 2px; border-bottom: 1px solid rgba(33,42,55,.5); }
+}
 </style>
 </head>
 <body>
 <div class="root">
   <header class="header">
     <div class="logo-block">
-      <span class="logo">◈ SCALPING BOT</span>
-      <span class="logo-sub">BTC-USDT-SWAP · 15m · 10x</span>
+      <span class="logo">◈ MACD 4H BOT</span>
+      <span class="logo-sub">BTC-USDT-SWAP · 4H · 1x · MACD 24/52/18</span>
     </div>
     <div class="h-center">
       <span class="h-price-label">BTC/USD</span><span id="h-price" class="h-price-val">—</span>
     </div>
     <div class="h-right">
       <div class="status-pill" id="status-pill"><span class="status-dot"></span><span id="status-text">CONNECTING</span></div>
-      <div class="cooldown-badge" id="cooldown-badge"><div class="cooldown-dot"></div><span id="cooldown-text">Cooldown --</span></div>
+      <div class="cooldown-badge" id="cooldown-badge"><div class="cooldown-dot"></div><span id="cooldown-text">Próxima vela --</span></div>
       <span id="h-update" class="h-update">—</span>
     </div>
   </header>
@@ -208,12 +221,12 @@ html, body { width: 100vw; height: 100vh; background: var(--bg); color: var(--te
         <div class="pos-grid">
           <div class="pos-item"><div class="pos-item-label">Entrada</div><div class="pos-item-val" id="desk-pos-entry">—</div></div>
           <div class="pos-item"><div class="pos-item-label">PnL flotante</div><div class="pos-item-val" id="desk-pos-pnl">—</div></div>
-          <div class="pos-item"><div class="pos-item-label green">Take profit</div><div class="pos-item-val green" id="desk-pos-tp">—</div></div>
-          <div class="pos-item"><div class="pos-item-label red">Stop loss</div><div class="pos-item-val red" id="desk-pos-sl">—</div></div>
+          <div class="pos-item"><div class="pos-item-label">Stop inicial</div><div class="pos-item-val muted" id="desk-pos-tp">—</div></div>
+          <div class="pos-item"><div class="pos-item-label red">Stop actual (OKX)</div><div class="pos-item-val red" id="desk-pos-sl">—</div></div>
           <div class="pos-item"><div class="pos-item-label">Duración</div><div class="pos-item-val muted" id="desk-pos-dur">—</div></div>
           <div class="pos-item" id="desk-trailing-row"><div class="pos-item-label yellow">Trailing stop</div><div class="pos-item-val muted" id="desk-trailing-val">Inactivo</div></div>
         </div>
-        <div class="pos-cool" id="desk-pos-cool-row" style="display:none">Cooldown activo — <span id="desk-pos-cool">—</span></div>
+        <div class="pos-cool" id="desk-pos-cool-row" style="display:none"><span id="desk-pos-cool">—</span></div>
       </div>
 
       <div class="sec">
@@ -229,7 +242,7 @@ html, body { width: 100vw; height: 100vh; background: var(--bg); color: var(--te
       </div>
 
       <div class="sec" style="flex:1">
-        <div class="sec-label">Proximidad a señal</div>
+        <div class="sec-label">Estado MACD · próximo cruce</div>
         <div class="gauge-wrap">
           <svg class="gauge-svg" width="76" height="76" viewBox="0 0 100 100">
             <circle cx="50" cy="50" r="42" fill="none" stroke="var(--bg3)" stroke-width="10"/>
@@ -246,22 +259,22 @@ html, body { width: 100vw; height: 100vh; background: var(--bg); color: var(--te
     </div>
 
     <div class="col-center">
-      <div class="tv-wrap"><div class="tv-header"><span class="tv-label">BTC-USD · 15m</span></div>
+      <div class="tv-wrap"><div class="tv-header"><span class="tv-label">BTC-USDT · 4H · MACD 24/52/18</span></div>
         <div id="tv-chart-container"></div>
       </div>
     </div>
 
     <div class="col-right">
       <div class="sec"><div class="sec-label">Indicadores</div>
-        <div class="ind-block"><div class="ind-row"><span class="ind-name">RSI · P7</span><span class="ind-val muted" id="desk-r-rsi">—</span></div>
-          <div class="bar-track"><div class="bar-fill" id="desk-rsi-bar" style="width:50%"></div></div></div>
-        <div class="ind-block"><div class="ind-row"><span class="ind-name">ADX · P14</span><span class="ind-val muted" id="desk-r-adx">—</span></div>
+        <div class="ind-block"><div class="ind-row"><span class="ind-name">HISTOGRAMA MACD</span><span class="ind-val muted" id="desk-r-rsi">—</span></div>
+          <div class="bar-track"><div class="bar-fill" id="desk-rsi-bar" style="width:0%"></div></div></div>
+        <div class="ind-block"><div class="ind-row"><span class="ind-name">ATR 14 · 4H</span><span class="ind-val muted" id="desk-r-adx">—</span></div>
           <div class="bar-track"><div class="bar-fill" id="desk-adx-bar" style="width:0%"></div></div></div>
       </div>
       <div class="sec trades-sec"><div class="trades-header">Últimas operaciones<button class="csv-btn" onclick="downloadCSV()">↓ CSV</button></div>
         <div class="trades-wrap">
           <div class="trade-row trade-row-head">
-            <span>Lado</span><span>Entrada</span><span>Salida</span><span>PnL</span><span>Res</span>
+            <span>Lado</span><span>Entrada</span><span>Salida</span><span>PnL</span><span>Salida por</span>
           </div>
           <div class="trade-rows" id="desk-trades-tbody"><div class="trade-row"><span class="trade-empty">Sin operaciones</span></div></div>
         </div>
@@ -283,15 +296,15 @@ html, body { width: 100vw; height: 100vh; background: var(--bg); color: var(--te
       <div class="mobile-pos-grid">
         <div class="pos-item"><div class="pos-item-label">Entrada</div><div class="pos-item-val" id="mobile-pos-entry">—</div></div>
         <div class="pos-item"><div class="pos-item-label">PnL</div><div class="pos-item-val" id="mobile-pos-pnl">—</div></div>
-        <div class="pos-item"><div class="pos-item-label green">TP</div><div class="pos-item-val green" id="mobile-pos-tp">—</div></div>
-        <div class="pos-item"><div class="pos-item-label red">SL</div><div class="pos-item-val red" id="mobile-pos-sl">—</div></div>
+        <div class="pos-item"><div class="pos-item-label">Stop inicial</div><div class="pos-item-val muted" id="mobile-pos-tp">—</div></div>
+        <div class="pos-item"><div class="pos-item-label red">Stop actual</div><div class="pos-item-val red" id="mobile-pos-sl">—</div></div>
         <div class="pos-item"><div class="pos-item-label">Duración</div><div class="pos-item-val" id="mobile-pos-dur">—</div></div>
         <div class="pos-item" id="mobile-trailing-row"><div class="pos-item-label yellow">Trailing stop</div><div class="pos-item-val muted" id="mobile-trailing-val">Inactivo</div></div>
       </div>
-      <div class="pos-cool" id="mobile-pos-cool-row" style="display:none">Cooldown activo — <span id="mobile-pos-cool">—</span></div>
+      <div class="pos-cool" id="mobile-pos-cool-row" style="display:none"><span id="mobile-pos-cool">—</span></div>
     </div>
 
-    <div class="mobile-card"><div class="mobile-card-title">Proximidad a señal</div>
+    <div class="mobile-card"><div class="mobile-card-title">Estado MACD · próximo cruce</div>
       <div class="gauge-wrap">
         <svg class="gauge-svg" width="72" height="72" viewBox="0 0 100 100">
           <circle cx="50" cy="50" r="42" fill="none" stroke="var(--bg3)" stroke-width="10"/>
@@ -307,9 +320,9 @@ html, body { width: 100vw; height: 100vh; background: var(--bg); color: var(--te
     </div>
 
     <div class="mobile-card"><div class="mobile-card-title">Indicadores</div>
-      <div class="ind-block"><div class="ind-row"><span class="ind-name">RSI · P7</span><span class="ind-val muted" id="mobile-rsi">—</span></div>
+      <div class="ind-block"><div class="ind-row"><span class="ind-name">HISTOGRAMA MACD</span><span class="ind-val muted" id="mobile-rsi">—</span></div>
         <div class="bar-track"><div class="bar-fill" id="mobile-rsi-bar" style="width:0%"></div></div></div>
-      <div class="ind-block" style="margin-bottom:0"><div class="ind-row"><span class="ind-name">ADX · P14</span><span class="ind-val muted" id="mobile-adx">—</span></div>
+      <div class="ind-block" style="margin-bottom:0"><div class="ind-row"><span class="ind-name">ATR 14 · 4H</span><span class="ind-val muted" id="mobile-adx">—</span></div>
         <div class="bar-track"><div class="bar-fill" id="mobile-adx-bar" style="width:0%"></div></div></div>
     </div>
 
@@ -331,7 +344,7 @@ html, body { width: 100vw; height: 100vh; background: var(--bg); color: var(--te
     <div class="mobile-card"><div class="mobile-card-title">Últimas operaciones</div>
       <div class="mobile-trades">
         <table>
-          <thead><tr><th>Lado</th><th>Entrada</th><th>PnL</th><th>Res</th></tr></thead>
+          <thead><tr><th>Lado</th><th>Entrada</th><th>PnL</th><th>Salida por</th></tr></thead>
           <tbody id="mobile-trades-body"><tr><td colspan="4">Sin operaciones</td></tr></tbody>
         </table>
       </div>
@@ -341,39 +354,25 @@ html, body { width: 100vw; height: 100vh; background: var(--bg); color: var(--te
 
 <script>
 const API_BASE = "https://matiasbarone.pythonanywhere.com";
-const REFRESH = 60000;
-const GAUGE_CIRCUM = 264; // 2 * PI * 42, rounded
+const API = `${API_BASE}/api/4h`;
+const REFRESH = 30000;
+const GAUGE_CIRCUM = 264; // 2 * PI * 42
+const CT_VAL = 0.01;      // BTC por contrato en BTC-USDT-SWAP
 let allTrades = [], allSnapshots = [];
-let currentIndicators = {};
 
-function calculateReturn(capital, trades) {
-  if (!trades || trades.length === 0) return 0;
-  const sortedTrades = [...trades].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-  let initialCapital = null;
-  for (let i = 0; i < sortedTrades.length; i++) {
-    if (sortedTrades[i].capital_before && sortedTrades[i].capital_before > 0) {
-      initialCapital = sortedTrades[i].capital_before;
-      break;
-    }
-  }
-  if (!initialCapital && sortedTrades.length > 0 && sortedTrades[0].capital_after) {
-    initialCapital = sortedTrades[0].capital_after - (sortedTrades[0].pnl_usd || 0);
-  }
-  if (!initialCapital || initialCapital <= 0) return 0;
-  return (capital - initialCapital) / initialCapital * 100;
-}
+const fmtUsd = (v, d = 0) => `$${Number(v).toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d })}`;
+const isNum = v => v !== undefined && v !== null && !isNaN(v);
 
-// Agrupa trades por día (fecha local del timestamp) y suma el PnL de CADA día por separado (no acumulado)
+// Agrupa trades por día y suma el PnL de cada día
 function buildDailyHistory(trades) {
   const map = {};
   (trades || []).forEach(t => {
     if (!t.timestamp) return;
     const date = t.timestamp.slice(0, 10);
-    if (!map[date]) map[date] = { date, pnlUsd: 0, wins: 0, losses: 0, trades: 0 };
+    if (!map[date]) map[date] = { date, pnlUsd: 0, wins: 0, losses: 0 };
     const pnl = t.pnl_usd || 0;
     map[date].pnlUsd += pnl;
-    map[date].trades += 1;
-    if (pnl >= 0) map[date].wins++; else map[date].losses++;
+    if (pnl > 0) map[date].wins++; else map[date].losses++;
   });
   return Object.values(map).sort((a, b) => b.date.localeCompare(a.date));
 }
@@ -381,275 +380,179 @@ function buildDailyHistory(trades) {
 function renderDailyHistory(elId, trades, limit) {
   const el = document.getElementById(elId);
   const days = buildDailyHistory(trades).slice(0, limit);
-  if (days.length === 0) {
-    el.innerHTML = '<div class="day-row"><span class="day-date">Sin datos</span></div>';
-    return;
-  }
+  if (days.length === 0) { el.innerHTML = '<div class="day-row"><span class="day-date">Sin datos</span></div>'; return; }
   el.innerHTML = days.map(d => {
-    const sign = d.pnlUsd >= 0 ? "+" : "-";
     const cls = d.pnlUsd >= 0 ? "green" : "red";
-    return `<div class="day-row">
-      <span class="day-date">${d.date}</span>
-      <span class="day-result">
-        <span class="day-wl">${d.wins}W/${d.losses}L</span>
-        <span class="day-val ${cls}">${sign}$${Math.abs(d.pnlUsd).toFixed(0)}</span>
-      </span>
-    </div>`;
+    return `<div class="day-row"><span class="day-date">${d.date}</span>
+      <span class="day-result"><span class="day-wl">${d.wins}W/${d.losses}L</span>
+      <span class="day-val ${cls}">${d.pnlUsd >= 0 ? "+" : "-"}$${Math.abs(d.pnlUsd).toFixed(2)}</span></span></div>`;
   }).join("");
 }
 
-function updateGauge(prefix, conditions, blockedReason) {
-  const met = conditions.filter(c => c.ok).length;
-  const pct = Math.round((met / conditions.length) * 100);
+// Estado MACD: qué tan cerca está el próximo cruce (estimación por la velocidad del histograma)
+function macdStatus(state) {
+  const h = state.macd_hist, hp = state.macd_hist_prev;
+  if (!isNum(h) || !isNum(hp)) return { pct: 0, text: "Esperando la primera vela cerrada…", conds: [] };
+  const above = h > 0;
+  const shrinking = Math.abs(h) < Math.abs(hp);
+  const speed = Math.abs(h - hp);
+  let velas = shrinking && speed > 0 ? Math.abs(h) / speed : Infinity;
+  let pct = 0;
+  if (shrinking) pct = velas <= 1 ? 100 : velas <= 2 ? 75 : velas <= 4 ? 50 : velas <= 8 ? 25 : 10;
+  const next = above ? "SHORT" : "LONG";
+  const text = shrinking
+    ? `Histograma acercándose a cero: cruce ${next} estimado en ~${Math.max(1, Math.round(velas))} vela(s) de 4h`
+    : `Histograma alejándose de cero: sin cruce cercano (próximo sería ${next})`;
+  const conds = [
+    { label: "MACD vs señal", ok: above, value: above ? "ARRIBA (alcista)" : "ABAJO (bajista)" },
+    { label: "Histograma", ok: above, value: h.toFixed(1) },
+    { label: "Tendencia del histograma", ok: shrinking, value: shrinking ? "hacia el cruce" : "alejándose" },
+    { label: "Próxima señal posible", ok: true, value: next },
+  ];
+  return { pct, text, conds, next };
+}
+
+function updateGauge(prefix, ms, reason) {
   const circle = document.getElementById(`${prefix}-gauge-circle`);
   const pctEl = document.getElementById(`${prefix}-gauge-pct`);
   const subEl = document.getElementById(`${prefix}-gauge-sub`);
   const listEl = document.getElementById(`${prefix}-cond-list`);
+  const pct = ms.pct;
+  circle.style.strokeDashoffset = GAUGE_CIRCUM - (pct / 100) * GAUGE_CIRCUM;
+  const color = pct >= 75 ? "var(--green)" : pct >= 25 ? "var(--yellow)" : "var(--muted2)";
+  circle.style.stroke = color; pctEl.style.color = color; pctEl.textContent = `${pct}%`;
+  subEl.textContent = reason ? `${reason} · ${ms.text}` : ms.text;
+  listEl.innerHTML = ms.conds.map(c => `<div class="cond-row"><span class="cond-dot ${c.ok ? "ok" : "no"}"></span>
+    <span class="cond-label">${c.label}</span><span class="cond-val ${c.ok ? "green" : "muted"}">${c.value}</span></div>`).join("");
+}
 
-  const offset = GAUGE_CIRCUM - (pct / 100) * GAUGE_CIRCUM;
-  circle.style.strokeDashoffset = offset;
-  let color = "var(--muted)";
-  if (pct === 100) color = "var(--green)";
-  else if (pct >= 50) color = "var(--yellow)";
-  else color = "var(--red)";
-  circle.style.stroke = color;
-  pctEl.style.color = color;
-  pctEl.textContent = `${pct}%`;
-  subEl.textContent = blockedReason || (pct === 100 ? "Todas las condiciones se cumplen" : "Condiciones pendientes para señal");
-
-  listEl.innerHTML = conditions.map(c => `
-    <div class="cond-row">
-      <span class="cond-dot ${c.ok ? "ok" : "no"}"></span>
-      <span class="cond-label">${c.label}</span>
-      <span class="cond-val ${c.ok ? "green" : "muted"}">${c.value}</span>
-    </div>
-  `).join("");
+function countdown(ms) {
+  if (!ms) return "--";
+  const s = Math.max(0, Math.floor((ms - Date.now()) / 1000));
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+  const hora = new Date(ms).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false });
+  return `${hora} (en ${h}h ${m}m)`;
 }
 
 async function fetchAll() {
   try {
-    const [stR, trR, snR, indR] = await Promise.all([
-      fetch(`${API_BASE}/api/state`),
-      fetch(`${API_BASE}/api/trades`),
-      fetch(`${API_BASE}/api/snapshots`),
-      fetch(`${API_BASE}/api/btc/dynamic`).catch(() => null)
+    const [stR, trR, snR, alR] = await Promise.all([
+      fetch(`${API}/state`), fetch(`${API}/trades`), fetch(`${API}/snapshots`), fetch(`${API}/status`).catch(() => null)
     ]);
     const state = await stR.json();
-    allTrades = await trR.json();
-    allSnapshots = await snR.json();
-    let dynamicData = {};
-    if (indR && indR.ok) dynamicData = await indR.json();
+    allTrades = await trR.json(); if (!Array.isArray(allTrades)) allTrades = [];
+    allSnapshots = await snR.json(); if (!Array.isArray(allSnapshots)) allSnapshots = [];
+    const alive = alR ? (await alR.json()).alive : false;
 
-    const cap = state.capital || 1000;
-    const ret = calculateReturn(cap, allTrades);
-    const wins = state.total_wins || 0, losses = state.total_losses || 0;
-    const tot = wins + losses;
+    const cap = state.capital || 0;
+    const init = state.initial_capital || cap;
+    const ret = init > 0 ? (cap - init) / init * 100 : 0;
+    const wins = state.total_wins || 0, losses = state.total_losses || 0, tot = wins + losses;
     const wr = tot > 0 ? wins / tot * 100 : 0;
     const dd = state.max_drawdown_pct || 0;
     const price = state.last_price || 0;
-    const currentRSI = currentIndicators.rsi || state.current_rsi;
-    const currentADX = currentIndicators.adx || state.current_adx;
-    const volRatio = currentIndicators.volume_ratio;
-    const emaDiffPct = currentIndicators.ema_diff_pct;
-    const coolUntil = state.cooldown_until || 0;
-    const remainingSec = coolUntil - Date.now() / 1000;
-    const inCooldown = remainingSec > 0;
-    const remainingMin = Math.max(0, Math.floor(remainingSec / 60));
 
-    const dynamicSl = dynamicData.dynamic_sl_price;
-    const isTrailingActive = dynamicData.trailing_active || false;
-
-    // Trades sin duplicados
-    const uniqueTrades = [];
-    const seen = new Set();
-    for (const t of [...allTrades].reverse()) {
-      const key = `${t.side}_${Math.round(t.entry_price)}_${new Date(t.timestamp).toISOString().slice(0, 16)}`;
-      if (!seen.has(key)) { seen.add(key); uniqueTrades.unshift(t); }
-    }
-
-    // Cooldown badge
-    document.getElementById("cooldown-text").textContent = remainingMin > 0 ? `Cooldown ${remainingMin}m` : "Cooldown --";
-    document.getElementById("cooldown-badge").classList.toggle("active", remainingMin > 0);
-
-    // Condiciones de señal
-    const volOk = volRatio !== undefined && volRatio !== null && volRatio >= 0.02;
-    const adxOk = currentADX !== undefined && currentADX !== null && currentADX >= 10 && currentADX <= 100;
-    const emaDiffOk = emaDiffPct !== undefined && emaDiffPct !== null && Math.abs(emaDiffPct) >= 0.10;
-    const cooldownOk = !inCooldown;
-    const conditions = [
-      { label: "Volumen ≥ 0.02", ok: volOk, value: volRatio !== undefined && volRatio !== null ? volRatio.toFixed(3) : "—" },
-      { label: "ADX en rango (10–100)", ok: adxOk, value: currentADX !== undefined && currentADX !== null ? currentADX.toFixed(1) : "—" },
-      { label: "Divergencia EMA ≥ 0.10%", ok: emaDiffOk, value: emaDiffPct !== undefined && emaDiffPct !== null ? `${emaDiffPct.toFixed(3)}%` : "—" },
-      { label: "Sin cooldown", ok: cooldownOk, value: cooldownOk ? "libre" : `${remainingMin}m` }
-    ];
-    let gaugeReason = null;
-    if (state.position) gaugeReason = "Posición abierta — sin evaluación de entrada";
-
-    ["desk", "mobile"].forEach(p => updateGauge(p, conditions, gaugeReason));
-
-    // HEADER
-    if (price) document.getElementById("h-price").textContent = `$${price.toLocaleString()}`;
+    // Header
+    if (price) document.getElementById("h-price").textContent = fmtUsd(price, 1);
     document.getElementById("h-update").textContent = new Date().toLocaleTimeString("es-AR");
+    document.getElementById("cooldown-text").textContent = `Próxima vela ${countdown(state.next_candle_close_ms)}`;
+    document.getElementById("cooldown-badge").classList.toggle("active", !!state.position);
 
-    // Indicadores RSI/ADX
-    if (currentRSI !== undefined && currentRSI !== null) {
-      document.getElementById("desk-r-rsi").textContent = currentRSI.toFixed(1);
-      document.getElementById("mobile-rsi").textContent = currentRSI.toFixed(1);
-      const w = `${Math.min(100, currentRSI)}%`;
-      document.getElementById("desk-rsi-bar").style.width = w;
-      document.getElementById("mobile-rsi-bar").style.width = w;
-    }
-    if (currentADX !== undefined && currentADX !== null) {
-      document.getElementById("desk-r-adx").textContent = currentADX.toFixed(1);
-      document.getElementById("mobile-adx").textContent = currentADX.toFixed(1);
-      const w = `${Math.min(100, currentADX)}%`;
-      const c = adxOk ? "var(--green)" : "var(--muted)";
-      const barD = document.getElementById("desk-adx-bar"); barD.style.width = w; barD.style.background = c;
-      const barM = document.getElementById("mobile-adx-bar"); barM.style.width = w; barM.style.background = c;
-    }
+    // Estado MACD
+    const ms = macdStatus(state);
+    const reason = state.position ? `En ${state.position}: un cruce ${state.position === "LONG" ? "SHORT" : "LONG"} cierra y da vuelta` : null;
+    ["desk", "mobile"].forEach(p => updateGauge(p, ms, reason));
 
-    // Mobile price
-    if (price) document.getElementById("mobile-price").textContent = `$${price.toLocaleString()}`;
+    // Indicadores: histograma y ATR
+    if (isNum(state.macd_hist)) {
+      const h = state.macd_hist, atr = state.atr || 1;
+      const w = `${Math.min(100, Math.abs(h) / atr * 100)}%`, c = h >= 0 ? "var(--green)" : "var(--red)";
+      ["desk-r-rsi", "mobile-rsi"].forEach(id => { const e = document.getElementById(id); e.textContent = h.toFixed(1); e.className = `ind-val ${h >= 0 ? "green" : "red"}`; });
+      ["desk-rsi-bar", "mobile-rsi-bar"].forEach(id => { const e = document.getElementById(id); e.style.width = w; e.style.background = c; });
+    }
+    if (isNum(state.atr) && price) {
+      const ap = state.atr / price * 100;
+      ["desk-r-adx", "mobile-adx"].forEach(id => document.getElementById(id).textContent = `${fmtUsd(state.atr)} · ${ap.toFixed(2)}%`);
+      ["desk-adx-bar", "mobile-adx-bar"].forEach(id => { const e = document.getElementById(id); e.style.width = `${Math.min(100, ap / 2 * 100)}%`; e.style.background = "var(--accent)"; });
+    }
+    if (price) document.getElementById("mobile-price").textContent = fmtUsd(price, 1);
 
     // Métricas
     const retTxt = `${ret >= 0 ? "+" : ""}${ret.toFixed(2)}%`;
-    const capTxt = `$${(cap / 1000).toFixed(1)}k`;
+    const capTxt = fmtUsd(cap);
     const wrTxt = `${wr.toFixed(1)}%`;
     const ddTxt = `${dd.toFixed(1)}%`;
     const wlHtml = `<span class="green">${wins}</span>/<span class="red">${losses}</span>`;
-    const pnlTxt = `${state.gross_pnl >= 0 ? "+" : ""}$${Math.abs(state.gross_pnl || 0).toFixed(0)}`;
-
-    document.getElementById("desk-m-return").textContent = retTxt;
-    document.getElementById("desk-m-wr").textContent = wrTxt;
-    document.getElementById("desk-m-cap").textContent = capTxt;
-    document.getElementById("desk-m-pnl").textContent = pnlTxt;
-    document.getElementById("desk-m-dd").textContent = ddTxt;
+    const gp = state.gross_pnl || 0;
+    const pnlTxt = `${gp >= 0 ? "+" : "-"}$${Math.abs(gp).toFixed(2)}`;
+    [["desk-m-return", retTxt], ["desk-m-wr", wrTxt], ["desk-m-cap", capTxt], ["desk-m-pnl", pnlTxt], ["desk-m-dd", ddTxt],
+     ["mobile-return", retTxt], ["mobile-capital", capTxt], ["mobile-wr", wrTxt], ["mobile-dd", ddTxt], ["mobile-pnl", pnlTxt]]
+      .forEach(([id, v]) => document.getElementById(id).textContent = v);
     document.getElementById("desk-m-wl").innerHTML = wlHtml;
-
-    document.getElementById("mobile-return").textContent = retTxt;
-    document.getElementById("mobile-capital").textContent = capTxt;
-    document.getElementById("mobile-wr").textContent = wrTxt;
-    document.getElementById("mobile-dd").textContent = ddTxt;
     document.getElementById("mobile-wl").innerHTML = wlHtml;
-    document.getElementById("mobile-pnl").textContent = pnlTxt;
 
-    // POSICIÓN ACTIVA
+    // Posición activa
     if (state.position && state.entry_price) {
-      const side = state.position;
-      const entry = state.entry_price;
-      const lev = 10;
-      const tpPct = 5.0;
-      let tp, sl;
-      if (side === "LONG") {
-        tp = entry * (1 + tpPct / lev / 100);
-        sl = (dynamicSl && dynamicSl > 0) ? dynamicSl : entry * (1 - 1.5 / lev / 100);
-      } else {
-        tp = entry * (1 - tpPct / lev / 100);
-        sl = (dynamicSl && dynamicSl > 0) ? dynamicSl : entry * (1 + 1.5 / lev / 100);
-      }
-      const profitPct = side === "LONG" ? (price - entry) / entry * lev * 100 : (entry - price) / entry * lev * 100;
-      const dur = state.entry_time ? Math.floor((Date.now() / 1000 - state.entry_time) / 60) : 0;
+      const side = state.position, entry = state.entry_price;
+      const dir = side === "LONG" ? 1 : -1;
+      const movePct = (price - entry) / entry * 100 * dir;
+      const pnlUsd = (price - entry) * dir * (state.position_size_contracts || 0) * CT_VAL;
+      const durH = state.entry_time ? (Date.now() / 1000 - state.entry_time) / 3600 : 0;
+      const sl = state.dynamic_sl_price, slInit = state.initial_sl;
+      const lockedPct = sl ? (sl - entry) / entry * 100 * dir : null;
 
-      [
-        ["desk", "desk-pos-side", "desk-pos-entry", "desk-pos-tp", "desk-pos-sl", "desk-pos-dur", "desk-pos-pnl", "pos-item-val"],
-        ["mobile", "mobile-pos-side", "mobile-pos-entry", "mobile-pos-tp", "mobile-pos-sl", "mobile-pos-dur", "mobile-pos-pnl", "pos-item-val"]
-      ].forEach(([prefix, sideId, entryId, tpId, slId, durId, pnlId, pnlClass]) => {
-        const sideEl = document.getElementById(sideId);
-        sideEl.textContent = side;
-        sideEl.className = `${prefix === "mobile" ? "mobile-pos-side" : "pos-side"} ${side.toLowerCase()}`;
-        document.getElementById(entryId).textContent = `$${entry.toLocaleString()}`;
-        document.getElementById(tpId).textContent = `$${tp.toLocaleString()}`;
-        document.getElementById(slId).textContent = `$${sl.toLocaleString()}`;
-        document.getElementById(durId).textContent = `${dur}m`;
-        const pnlEl = document.getElementById(pnlId);
-        pnlEl.textContent = `${profitPct >= 0 ? "+" : ""}${profitPct.toFixed(2)}%`;
-        pnlEl.className = `${pnlClass} ${profitPct >= 0 ? "green" : "red"}`;
+      [["desk", "pos-side"], ["mobile", "mobile-pos-side"]].forEach(([p, cls]) => {
+        const e = document.getElementById(`${p}-pos-side`); e.textContent = side; e.className = `${cls} ${side.toLowerCase()}`;
+        document.getElementById(`${p}-pos-entry`).textContent = fmtUsd(entry, 1);
+        document.getElementById(`${p}-pos-tp`).textContent = slInit ? fmtUsd(slInit, 1) : "—";
+        document.getElementById(`${p}-pos-sl`).textContent = sl ? `${fmtUsd(sl, 1)} (${lockedPct >= 0 ? "+" : ""}${lockedPct.toFixed(2)}%)` : "—";
+        document.getElementById(`${p}-pos-dur`).textContent = durH >= 24 ? `${(durH / 24).toFixed(1)}d` : `${durH.toFixed(1)}h`;
+        const pe = document.getElementById(`${p}-pos-pnl`);
+        pe.textContent = `${movePct >= 0 ? "+" : ""}${movePct.toFixed(2)}% · ${pnlUsd >= 0 ? "+" : "-"}$${Math.abs(pnlUsd).toFixed(2)}`;
+        pe.className = `pos-item-val ${movePct >= 0 ? "green" : "red"}`;
+        const row = document.getElementById(`${p}-trailing-row`), val = document.getElementById(`${p}-trailing-val`);
+        if (state.trailing_active && sl) { row.classList.add("active"); val.classList.remove("muted"); val.textContent = fmtUsd(sl, 1); }
+        else { row.classList.remove("active"); val.classList.add("muted"); val.textContent = "Aún en stop inicial"; }
+        document.getElementById(`${p}-pos-cool-row`).style.display = "none";
       });
-
-      // Trailing con valor visible y grande
-      ["desk", "mobile"].forEach(p => {
-        const row = document.getElementById(`${p}-trailing-row`);
-        const val = document.getElementById(`${p}-trailing-val`);
-        if (isTrailingActive && dynamicSl) {
-          row.classList.add("active");
-          val.classList.remove("muted");
-          val.textContent = `$${dynamicSl.toLocaleString()}`;
-        } else {
-          row.classList.remove("active");
-          val.classList.add("muted");
-          val.textContent = "Inactivo";
-        }
-      });
-
-      document.getElementById("desk-pos-cool-row").style.display = "none";
-      document.getElementById("mobile-pos-cool-row").style.display = "none";
     } else {
-      ["desk-pos-side", "mobile-pos-side"].forEach(id => {
-        const el = document.getElementById(id);
-        el.textContent = "FLAT";
-        el.className = id.startsWith("mobile") ? "mobile-pos-side flat" : "pos-side muted";
-      });
-      ["desk-pos-entry", "desk-pos-tp", "desk-pos-sl", "desk-pos-dur",
-       "mobile-pos-entry", "mobile-pos-tp", "mobile-pos-sl", "mobile-pos-dur"]
-        .forEach(id => document.getElementById(id).textContent = "—");
-      document.getElementById("desk-pos-pnl").textContent = "—";
-      document.getElementById("mobile-pos-pnl").textContent = "—";
-      ["desk", "mobile"].forEach(p => {
+      [["desk", "pos-side muted"], ["mobile", "mobile-pos-side flat"]].forEach(([p, cls]) => {
+        const e = document.getElementById(`${p}-pos-side`); e.textContent = "FLAT"; e.className = cls;
+        ["entry", "tp", "sl", "dur", "pnl"].forEach(k => document.getElementById(`${p}-pos-${k}`).textContent = "—");
         document.getElementById(`${p}-trailing-row`).classList.remove("active");
-        const val = document.getElementById(`${p}-trailing-val`);
-        val.classList.add("muted");
-        val.textContent = "Inactivo";
+        const val = document.getElementById(`${p}-trailing-val`); val.classList.add("muted"); val.textContent = "Inactivo";
+        document.getElementById(`${p}-pos-cool-row`).style.display = "block";
+        document.getElementById(`${p}-pos-cool`).textContent = `Sin posición · esperando cruce ${ms.next || ""}`;
       });
-      const coolRowDesk = document.getElementById("desk-pos-cool-row");
-      const coolRowMobile = document.getElementById("mobile-pos-cool-row");
-      if (inCooldown) {
-        coolRowDesk.style.display = "block"; document.getElementById("desk-pos-cool").textContent = `${remainingMin}m`;
-        coolRowMobile.style.display = "block"; document.getElementById("mobile-pos-cool").textContent = `${remainingMin}m`;
-      } else {
-        coolRowDesk.style.display = "none";
-        coolRowMobile.style.display = "none";
-      }
     }
 
-    // TABLAS DE TRADES
-    const reasonLabels = {
-      "TP": "TP", "SL_INICIAL": "SL", "TRAILING_STOP": "TRAIL",
-      "BREAKEVEN": "BE", "MANUAL_CLOSE": "MANUAL", "TP_SL_OKX": "TP/SL"
-    };
-    const rowsHtml = (limit) => [...uniqueTrades].reverse().slice(0, limit).map(t => {
-      const pnlNeto = t.pnl_pct_neto !== undefined ? t.pnl_pct_neto : (t.pnl_pct || 0);
-      const reasonClass = (t.reason || "TP_SL_OKX").replace(/\//g, "_");
-      const reasonLabel = reasonLabels[reasonClass] || reasonClass.replace(/_/g, " ").slice(0, 8);
-      return { t, pnlNeto, reasonClass, reasonLabel };
+    // Tablas de trades
+    const reasonLabels = { "STOP": "STOP", "TRAILING": "TRAIL", "CRUCE_CONTRARIO": "CRUCE" };
+    const rows = limit => [...allTrades].reverse().slice(0, limit).map(t => {
+      const pnl = isNum(t.pnl_pct_neto) ? t.pnl_pct_neto : 0;
+      const rc = (t.reason || "").replace(/\//g, "_");
+      return { t, pnl, rc, rl: reasonLabels[rc] || rc.slice(0, 8) };
     });
-
-    const deskTbody = document.getElementById("desk-trades-tbody");
-    const deskRows = rowsHtml(6);
-    deskTbody.innerHTML = deskRows.length === 0 ? `<div class="trade-row"><span class="trade-empty">Sin operaciones</span></div>` :
-      deskRows.map(({ t, pnlNeto, reasonClass, reasonLabel }) => `<div class="trade-row">
+    const dr = rows(6);
+    document.getElementById("desk-trades-tbody").innerHTML = dr.length === 0
+      ? `<div class="trade-row"><span class="trade-empty">Sin operaciones todavía</span></div>`
+      : dr.map(({ t, pnl, rc, rl }) => `<div class="trade-row">
         <span><span class="pill pill-${t.side}">${t.side}</span></span>
-        <span>$${(t.entry_price || 0).toLocaleString()}</span>
-        <span>$${(t.exit_price || 0).toLocaleString()}</span>
-        <span class="${pnlNeto >= 0 ? "green" : "red"}">${pnlNeto >= 0 ? "+" : ""}${pnlNeto.toFixed(2)}%</span>
-        <span><span class="pill pill-${reasonClass}">${reasonLabel}</span></span>
-      </div>`).join("");
+        <span>${fmtUsd(t.entry_price || 0)}</span><span>${fmtUsd(t.exit_price || 0)}</span>
+        <span class="${pnl >= 0 ? "green" : "red"}">${pnl >= 0 ? "+" : ""}${pnl.toFixed(2)}%</span>
+        <span><span class="pill pill-${rc}">${rl}</span></span></div>`).join("");
+    const mr = rows(10);
+    document.getElementById("mobile-trades-body").innerHTML = mr.length === 0
+      ? `<tr><td colspan="4">Sin operaciones todavía</td></tr>`
+      : mr.map(({ t, pnl, rc, rl }) => `<tr><td><span class="pill pill-${t.side}">${t.side}</span></td>
+        <td>${fmtUsd(t.entry_price || 0)}</td><td class="${pnl >= 0 ? "green" : "red"}">${pnl >= 0 ? "+" : ""}${pnl.toFixed(2)}%</td>
+        <td><span class="pill pill-${rc}">${rl}</span></td></tr>`).join("");
 
-    const mobileTbody = document.getElementById("mobile-trades-body");
-    const mobileRows = rowsHtml(10);
-    mobileTbody.innerHTML = mobileRows.length === 0 ? `<tr><td colspan="4">Sin operaciones</td></tr>` :
-      mobileRows.map(({ t, pnlNeto, reasonClass, reasonLabel }) => `<tr>
-        <td><span class="pill pill-${t.side}">${t.side}</span></td>
-        <td>$${(t.entry_price || 0).toLocaleString()}</td>
-        <td class="${pnlNeto >= 0 ? "green" : "red"}">${pnlNeto >= 0 ? "+" : ""}${pnlNeto.toFixed(2)}%</td>
-        <td><span class="pill pill-${reasonClass}">${reasonLabel}</span></td>
-      </tr>`).join("");
-
-    // HISTORIAL DIARIO — PnL del día, no acumulado
     renderDailyHistory("desk-snap-rows", allTrades, 6);
     renderDailyHistory("mobile-snap-rows", allTrades, 10);
 
-    document.getElementById("status-pill").className = "status-pill alive";
-    document.getElementById("status-text").textContent = "ACTIVO";
+    document.getElementById("status-pill").className = `status-pill ${alive ? "alive" : "dead"}`;
+    document.getElementById("status-text").textContent = alive ? "ACTIVO" : "SIN DATOS RECIENTES";
   } catch (e) {
     console.error(e);
     document.getElementById("status-pill").className = "status-pill dead";
@@ -659,12 +562,12 @@ async function fetchAll() {
 
 function downloadCSV() {
   if (!allTrades || allTrades.length === 0) return;
-  const headers = ["timestamp", "side", "entry_price", "exit_price", "duration_min", "pnl_pct_neto", "pnl_usd", "reason", "capital_after"];
-  const rows = allTrades.map(t => headers.map(h => `"${t[h] !== undefined ? t[h] : ""}"`).join(","));
+  const headers = ["timestamp", "side", "entry_price", "exit_price", "duration_min", "ret_pct", "pnl_pct_neto", "pnl_usd", "fee", "funding", "reason", "capital_after"];
+  const rows = allTrades.map(t => headers.map(h => `"${t[h] !== undefined && t[h] !== null ? t[h] : ""}"`).join(","));
   const blob = new Blob([[headers.join(","), ...rows].join("\n")], { type: "text/csv" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = `trades_${new Date().toISOString().split("T")[0]}.csv`;
+  a.download = `trades_macd4h_${new Date().toISOString().split("T")[0]}.csv`;
   a.click();
 }
 
@@ -673,19 +576,13 @@ function initTradingView() {
   if (document.getElementById("tv-chart-container")) {
     new TradingView.widget({
       container_id: "tv-chart-container",
-      symbol: "OKX:BTCUSD.P",
-      interval: "15",
+      symbol: "OKX:BTCUSDT.P",
+      interval: "240",
       timezone: "America/Argentina/Buenos_Aires",
-      theme: "dark",
-      style: "1",
-      locale: "es",
-      toolbar_bg: "#10151d",
-      enable_publishing: false,
-      hide_top_toolbar: false,
-      save_image: false,
-      backgroundColor: "#0a0e14",
-      gridColor: "#212a37",
-      studies: [],
+      theme: "dark", style: "1", locale: "es",
+      toolbar_bg: "#10151d", enable_publishing: false, hide_top_toolbar: false, save_image: false,
+      backgroundColor: "#0a0e14", gridColor: "#212a37",
+      studies: [{ id: "MACD@tv-basicstudies", inputs: { fastLength: 24, slowLength: 52, signalLength: 18 } }],
       overrides: {
         "mainSeriesProperties.candleStyle.upColor": "#22c55e",
         "mainSeriesProperties.candleStyle.downColor": "#ef4444",
@@ -703,5 +600,6 @@ document.addEventListener("DOMContentLoaded", function () {
   setInterval(fetchAll, REFRESH);
 });
 </script>
+
 </body>
 </html>
