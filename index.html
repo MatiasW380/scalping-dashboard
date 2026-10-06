@@ -1,605 +1,553 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
-<title>MACD 4H Bot · BTC</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"/>
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Barlow+Condensed:wght@300;400;600;700;900&display=swap" rel="stylesheet"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>MACD 4H · BTC</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..900&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg: #0a0e14;
-  --bg2: #10151d;
-  --bg3: #161d27;
-  --bd: #212a37;
-  --text: #e5e9f0;
-  --muted: #4b5563;
-  --muted2: #6b7889;
-  --accent: #3b82f6;
-  --accent-soft: rgba(59,130,246,0.12);
-  --green: #22c55e;
-  --green-soft: rgba(34,197,94,0.12);
-  --red: #ef4444;
-  --red-soft: rgba(239,68,68,0.12);
-  --yellow: #f59e0b;
-  --yellow-soft: rgba(245,158,11,0.12);
-  --mono: 'Space Mono', monospace;
-  --cond: 'Barlow Condensed', sans-serif;
-  --radius: 12px;
+  --ink: #0F1E26;
+  --panel: #152A34;
+  --panel-2: #1A3440;
+  --line: #24414D;
+  --text: #E7E2D4;
+  --dim: #8FA3A8;
+  --faint: #5B7379;
+  --long: #5CC8A0;
+  --short: #EF7D6B;
+  --amber: #E8B04B;
+  --radius-lg: 14px;
+  --radius-sm: 6px;
+  --gap: 14px;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { width: 100vw; height: 100vh; background: var(--bg); color: var(--text); font-family: var(--mono); font-size: 15px; overflow: hidden; }
-.root { display: flex; flex-direction: column; width: 100vw; height: 100vh; overflow: hidden; }
-
-/* HEADER */
-.header {
-  display: grid; grid-template-columns: auto 1fr auto; align-items: center;
-  padding: 1.2vh 1.8vw; background: var(--bg2); border-bottom: 1px solid var(--bd); gap: 16px;
-  flex: 0 0 auto;
+html { background: var(--ink); }
+body {
+  background: var(--ink); color: var(--text);
+  font-family: "Archivo", system-ui, sans-serif; font-variation-settings: "wdth" 100;
+  font-size: 15px; line-height: 1.45; font-variant-numeric: tabular-nums;
+  min-height: 100vh; -webkit-font-smoothing: antialiased;
 }
-.logo-block { display: flex; align-items: baseline; gap: 12px; }
-.logo { font-family: var(--cond); font-size: clamp(22px, 1.8vw, 34px); font-weight: 900; color: var(--accent); letter-spacing: 0.03em; white-space: nowrap; }
-.logo-sub { font-size: clamp(11px, 0.9vw, 15px); color: var(--muted2); letter-spacing: 0.08em; white-space: nowrap; }
-.h-center { display: flex; align-items: center; justify-content: center; gap: 10px; }
-.h-price-label { font-size: clamp(11px, 0.9vw, 15px); color: var(--muted2); letter-spacing: 0.12em; text-align: right; margin-right: 4px; }
-.h-price-val { font-size: clamp(30px, 3vw, 52px); font-weight: 700; line-height: 1; }
-.h-right { display: flex; align-items: center; gap: 10px; }
-.status-pill {
-  display: flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 20px;
-  border: 1px solid var(--bd); font-size: clamp(11px, 0.85vw, 14px); letter-spacing: 0.08em; background: var(--bg3);
+a, button { color: inherit; font: inherit; }
+:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; border-radius: 4px; }
+
+/* ---------- Encabezado ---------- */
+.top {
+  display: flex; align-items: center; gap: 24px; flex-wrap: wrap;
+  padding: 18px 28px; border-bottom: 1px solid var(--line);
 }
-.status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
-.status-pill.alive { border-color: var(--green); color: var(--green); background: var(--green-soft); }
-.status-pill.alive .status-dot { background: var(--green); animation: blink 2s infinite; }
-.status-pill.dead { border-color: var(--red); color: var(--red); background: var(--red-soft); }
-.cooldown-badge {
-  display: flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 20px;
-  border: 1px solid var(--bd); background: var(--bg3); font-size: clamp(11px, 0.85vw, 14px); color: var(--muted2);
+.brand { display: flex; align-items: baseline; gap: 12px; margin-right: auto; }
+.brand-name {
+  font-size: 26px; font-weight: 850; letter-spacing: -0.01em;
+  font-variation-settings: "wdth" 125;
 }
-.cooldown-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
-.cooldown-badge.active { border-color: var(--yellow); color: var(--yellow); background: var(--yellow-soft); }
-.cooldown-badge.active .cooldown-dot { background: var(--yellow); animation: blink 1s infinite; }
-.h-update { font-size: clamp(10px, 0.75vw, 13px); color: var(--muted); }
+.brand-desc { color: var(--dim); font-size: 14px; }
+.price { display: flex; align-items: baseline; gap: 10px; }
+.price-label { color: var(--dim); font-size: 14px; }
+.price-val { font-size: 30px; font-weight: 600; font-variation-settings: "wdth" 88; }
+.conn { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--dim); }
+.conn-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--faint); flex-shrink: 0; }
+.conn[data-state="ok"] .conn-dot { background: var(--long); box-shadow: 0 0 0 4px rgba(92,200,160,.15); }
+.conn[data-state="warn"] .conn-dot { background: var(--amber); }
+.conn[data-state="error"] .conn-dot { background: var(--short); }
 
-/* LAYOUT */
-.desktop-layout { display: none; grid-template-columns: 23% 1fr 23%; gap: 0; flex: 1; min-height: 0; overflow: hidden; }
-.mobile-layout { display: flex; flex-direction: column; gap: 12px; padding: 12px; overflow-y: auto; flex: 1; }
-.col-left, .col-right { display: flex; flex-direction: column; overflow: hidden; border-right: 1px solid var(--bd); min-height: 0; }
-.col-right { border-right: none; border-left: 1px solid var(--bd); }
-.col-center { display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
-.sec { border-bottom: 1px solid var(--bd); padding: 1.6vh 1.4vw; flex-shrink: 0; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
-.sec:last-child { border-bottom: none; }
-.col-left .sec:nth-child(1) { flex: 1.15; justify-content: center; }
-.col-left .sec:nth-child(2) { flex: 0.75; justify-content: center; }
-.col-left .sec:nth-child(3) { flex: 1.25; justify-content: center; }
-.col-right .sec:nth-child(1) { flex: 0.85; justify-content: center; }
-.col-right .sec:nth-child(2) { flex: 1.35; }
-.col-right .sec:nth-child(3) { flex: 1.05; justify-content: center; }
-.sec-label { font-size: clamp(10px, 0.75vw, 13px); letter-spacing: 0.14em; color: var(--muted2); font-weight: 700; margin-bottom: 1.2vh; text-transform: uppercase; }
-.mobile-card { background: var(--bg2); border: 1px solid var(--bd); border-radius: var(--radius); padding: 16px; }
-.mobile-card-title { font-size: 8px; letter-spacing: 0.14em; color: var(--muted2); font-weight: 700; margin-bottom: 12px; text-transform: uppercase; }
-
-/* POSICIÓN */
-.pos-side { font-family: var(--cond); font-size: clamp(30px, 2.6vw, 46px); font-weight: 900; letter-spacing: 0.04em; margin-bottom: 1.2vh; color: var(--muted2); }
-.pos-side.long { color: var(--green); }
-.pos-side.short { color: var(--red); }
-.pos-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.pos-item { background: var(--bg3); border: 1px solid var(--bd); border-radius: 8px; padding: 0.9vh 0.8vw; }
-.pos-item-label { font-size: clamp(9px, 0.65vw, 12px); color: var(--muted2); letter-spacing: 0.06em; margin-bottom: 2px; }
-.pos-item-val { font-size: clamp(15px, 1.15vw, 20px); font-weight: 700; }
-.pos-item.active { border-color: var(--yellow); background: var(--yellow-soft); }
-.pos-item.active .pos-item-val { color: var(--yellow); }
-.pos-cool { margin-top: 1vh; font-size: clamp(11px, 0.85vw, 14px); color: var(--muted2); text-align: center; }
-
-/* RENDIMIENTO */
-.metrics-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.met { background: var(--bg3); border: 1px solid var(--bd); border-radius: 8px; padding: 0.9vh 0.7vw; }
-.met-val { font-family: var(--cond); font-size: clamp(18px, 1.5vw, 27px); font-weight: 700; line-height: 1; margin-bottom: 3px; }
-.met-lbl { font-size: clamp(8px, 0.6vw, 11px); letter-spacing: 0.08em; color: var(--muted2); }
-
-/* GAUGE DE SEÑAL */
-.gauge-wrap { display: flex; align-items: center; gap: 1.2vw; margin-bottom: 1.4vh; }
-.gauge-svg { flex-shrink: 0; width: clamp(80px, 6.5vw, 120px); height: clamp(80px, 6.5vw, 120px); }
-.gauge-pct { font-family: var(--cond); font-size: clamp(30px, 2.4vw, 44px); font-weight: 900; }
-.gauge-text { flex: 1; }
-.gauge-title { font-size: 11px; font-weight: 700; margin-bottom: 3px; }
-.gauge-sub { font-size: clamp(11px, 0.8vw, 14px); color: var(--muted2); line-height: 1.4; }
-.cond-list { display: flex; flex-direction: column; gap: 0.9vh; }
-.cond-row { display: flex; align-items: center; gap: 8px; font-size: clamp(11px, 0.8vw, 14px); }
-.cond-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; background: var(--muted); }
-.cond-dot.ok { background: var(--green); }
-.cond-dot.no { background: var(--muted); }
-.cond-label { color: var(--muted2); flex: 1; }
-.cond-val { font-weight: 700; }
-
-/* CHART */
-.tv-wrap { flex: 1; overflow: hidden; border-bottom: none; min-height: 0; display: flex; flex-direction: column; }
-.tv-header { display: flex; align-items: center; justify-content: space-between; padding: 1vh 1.2vw; border-bottom: 1px solid var(--bd); flex-shrink: 0; }
-.tv-label { font-size: clamp(10px, 0.75vw, 13px); letter-spacing: 0.14em; color: var(--muted2); font-weight: 700; }
-#tv-chart-container { flex: 1; width: 100%; min-height: 0; }
-/* TRADES */
-.trades-sec { overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
-.trades-header { display: flex; justify-content: space-between; align-items: center; font-size: clamp(10px, 0.75vw, 13px); letter-spacing: 0.14em; color: var(--muted2); font-weight: 700; margin-bottom: 1vh; text-transform: uppercase; flex-shrink: 0; }
-.csv-btn { font-size: clamp(10px, 0.7vw, 12px); padding: 4px 11px; border-radius: 8px; border: 1px solid var(--bd); background: transparent; color: var(--muted2); cursor: pointer; }
-.csv-btn:hover { border-color: var(--accent); color: var(--accent); }
-.trades-wrap { overflow: hidden; flex: 1; min-height: 0; display: flex; flex-direction: column; }
-.trade-row {
-  display: grid; grid-template-columns: 0.85fr 1.15fr 1.15fr 1fr 0.9fr; align-items: center;
-  border-bottom: 1px solid rgba(33,42,55,.5); min-height: 0;
+.alert {
+  display: none; margin: 14px 28px 0; padding: 12px 16px; border-radius: var(--radius-sm);
+  border: 1px solid var(--short); background: rgba(239,125,107,.08); color: var(--text); font-size: 14px;
 }
-.trade-row-head { flex: 0 0 auto; color: var(--muted2); font-size: clamp(9px, 0.65vw, 12px); letter-spacing: 0.06em; padding: 0 6px 0.6vh; border-bottom: 1px solid var(--bd); }
-.trade-rows { flex: 1; display: flex; flex-direction: column; min-height: 0; }
-.trade-rows .trade-row { flex: 1; padding: 0 6px; font-size: clamp(11px, 0.85vw, 15px); }
-.trade-rows .trade-row:last-child { border-bottom: none; }
-.trade-empty { color: var(--muted2); grid-column: 1 / -1; }
-.pill { display: inline-block; padding: 3px 8px; border-radius: 8px; font-size: clamp(9px, 0.65vw, 12px); font-weight: 700; letter-spacing: 0.04em; }
-.pill-LONG, .pill-buy { background: var(--green-soft); color: var(--green); }
-.pill-SHORT, .pill-sell { background: var(--red-soft); color: var(--red); }
-.pill-TRAILING_STOP { background: var(--yellow-soft); color: var(--yellow); }
-.pill-BREAKEVEN { background: var(--green-soft); color: var(--green); }
-.pill-TP, .pill-SL_INICIAL { background: rgba(107,120,137,.15); color: var(--muted2); }
-.pill-MANUAL_CLOSE { background: var(--red-soft); color: var(--red); }
-.pill-STOP { background: var(--red-soft); color: var(--red); }
-.pill-TRAILING { background: var(--yellow-soft); color: var(--yellow); }
-.pill-CRUCE_CONTRARIO { background: var(--accent-soft); color: var(--accent); }
+.alert.show { display: block; }
+.alert.warn { border-color: var(--amber); background: rgba(232,176,75,.08); }
 
-/* HISTORIAL DIARIO */
-.day-list { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
-.day-row { display: flex; justify-content: space-between; align-items: center; padding: 0 0; border-bottom: 1px solid var(--bd); font-size: clamp(12px, 0.9vw, 16px); white-space: nowrap; }
-.day-list .day-row { flex: 1; min-height: 0; }
-.day-row:last-child { border-bottom: none; }
-.day-date { color: var(--muted2); font-weight: 700; }
-.day-result { display: flex; align-items: baseline; gap: 12px; }
-.day-wl { font-size: clamp(10px, 0.75vw, 13px); color: var(--muted2); }
-.day-val { font-weight: 700; font-family: var(--cond); font-size: clamp(17px, 1.4vw, 24px); min-width: 3.2em; text-align: right; }
-
-/* INDICADORES */
-.ind-block { margin-bottom: 1.6vh; }
-.ind-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.6vh; }
-.ind-name { font-size: clamp(9px, 0.7vw, 12px); letter-spacing: 0.08em; color: var(--muted2); font-weight: 700; }
-.ind-val { font-size: clamp(17px, 1.3vw, 22px); font-weight: 700; }
-.bar-track { position: relative; height: 7px; background: var(--bg3); border-radius: 4px; overflow: hidden; }
-.bar-fill { height: 100%; border-radius: 4px; transition: width .5s ease, background .3s ease; background: var(--muted); }
-
-.green { color: var(--green); }
-.red { color: var(--red); }
-.yellow { color: var(--yellow); }
-.muted { color: var(--muted2); }
-@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
-
-/* MOBILE SPECIFIC */
-.mobile-price-row { text-align: center; margin-bottom: 4px; }
-.mobile-price-val { font-size: 30px; font-weight: 700; }
-.mobile-pos-side { font-family: var(--cond); font-size: 30px; font-weight: 900; margin-bottom: 10px; }
-.mobile-pos-side.long { color: var(--green); }
-.mobile-pos-side.short { color: var(--red); }
-.mobile-pos-side.flat { color: var(--muted2); }
-.mobile-pos-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 4px; }
-.mobile-met { background: var(--bg3); border: 1px solid var(--bd); border-radius: 8px; padding: 9px 10px; }
-.mobile-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.mobile-trades { overflow-x: auto; }
-
-@media (min-width: 900px) { .mobile-layout { display: none; } .desktop-layout { display: grid; } }
-@media (max-width: 899px) { .desktop-layout { display: none; } .mobile-layout { display: flex; overflow-y: auto; } html, body, .root { height: auto; min-height: 100vh; overflow: visible; } }
-@media (max-width: 899px) {
-  html, body, .root { width: 100%; overflow-x: hidden; }
-  .header { grid-template-columns: 1fr auto; padding: 10px 16px; gap: 8px; }
-  .h-center, .logo-sub, .h-update { display: none; }
-  .h-right { flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
-  .cooldown-badge, .status-pill { padding: 4px 10px; font-size: 11px; }
-  .mobile-trades table { width: 100%; font-size: 12px; border-collapse: collapse; }
-  .mobile-trades th { text-align: left; color: var(--muted2); font-size: 10px; font-weight: 400; padding-bottom: 6px; }
-  .mobile-trades td { padding: 5px 2px; border-bottom: 1px solid rgba(33,42,55,.5); }
+/* ---------- Grilla ---------- */
+.layout {
+  display: grid; gap: var(--gap); padding: 18px 28px 28px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 380px;
+  grid-template-areas:
+    "chart chart pos"
+    "clock perf  trades";
 }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 18px 20px; min-width: 0; }
+.panel h2 { font-size: 15px; font-weight: 600; color: var(--dim); margin-bottom: 12px; font-variation-settings: "wdth" 100; }
+.chart { grid-area: chart; display: flex; flex-direction: column; }
+.pos { grid-area: pos; }
+.clock { grid-area: clock; }
+.perf { grid-area: perf; }
+.trades { grid-area: trades; }
+
+/* ---------- Gráfico ---------- */
+.chart-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+.chart-head h2 { margin-bottom: 0; }
+.legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; color: var(--dim); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
+.chart-box { position: relative; flex: 1; min-height: 420px; }
+#chart { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.chart-empty { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; text-align: center; color: var(--dim); padding: 24px; }
+.tip {
+  position: absolute; pointer-events: none; display: none; background: var(--ink); border: 1px solid var(--line);
+  border-radius: var(--radius-sm); padding: 8px 10px; font-size: 13px; white-space: nowrap; z-index: 2;
+}
+.tip b { font-weight: 600; }
+
+/* ---------- Posición ---------- */
+.side {
+  font-size: 64px; line-height: 1; font-weight: 900; letter-spacing: -0.02em;
+  font-variation-settings: "wdth" 125; margin: 4px 0 8px; color: var(--dim);
+}
+.side.long { color: var(--long); }
+.side.short { color: var(--short); }
+.side.flat { font-size: 40px; }
+.side-sub { color: var(--dim); font-size: 14px; margin-bottom: 18px; }
+.facts { display: grid; grid-template-columns: auto 1fr; gap: 10px 16px; align-items: baseline; }
+.facts dt { color: var(--dim); font-size: 14px; }
+.facts dd { text-align: right; font-size: 17px; font-weight: 600; }
+.facts dd small { display: block; font-size: 12.5px; font-weight: 400; color: var(--dim); }
+.up { color: var(--long); } .down { color: var(--short); } .amber { color: var(--amber); }
+.ruler { margin: 20px 0 6px; }
+.ruler svg { width: 100%; height: 54px; display: block; overflow: visible; }
+.macd-note { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 14px; color: var(--dim); }
+.macd-note strong { color: var(--text); font-weight: 600; }
+
+/* ---------- Reloj de decisiones ---------- */
+.clock-next { font-size: 22px; font-weight: 700; font-variation-settings: "wdth" 110; margin-bottom: 4px; }
+.clock-sub { color: var(--dim); font-size: 14px; margin-bottom: 18px; }
+.track { position: relative; height: 56px; margin: 0 6px; }
+.track-line { position: absolute; left: 0; right: 0; top: 20px; height: 4px; border-radius: 2px; background: var(--line); }
+.track-done { position: absolute; left: 0; top: 20px; height: 4px; border-radius: 2px; background: var(--faint); }
+.notch { position: absolute; top: 12px; width: 2px; height: 20px; background: var(--dim); transform: translateX(-1px); }
+.notch.next { background: var(--amber); width: 4px; transform: translateX(-2px); }
+.notch-l { position: absolute; top: 36px; transform: translateX(-50%); font-size: 12.5px; color: var(--dim); }
+.notch-l.next { color: var(--amber); font-weight: 700; }
+.now { position: absolute; top: 6px; width: 12px; height: 12px; border-radius: 50%; background: var(--text); transform: translateX(-6px); }
+
+/* ---------- Rendimiento ---------- */
+.stats { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 18px; }
+.stat-v { font-size: 26px; font-weight: 700; font-variation-settings: "wdth" 92; line-height: 1.1; }
+.stat-l { color: var(--dim); font-size: 13.5px; }
+
+/* ---------- Operaciones ---------- */
+.trades-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+.trades-head h2 { margin-bottom: 0; }
+.btn { background: transparent; border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 5px 10px; font-size: 13px; color: var(--dim); cursor: pointer; }
+.btn:hover { color: var(--text); border-color: var(--dim); }
+.tlist { list-style: none; }
+.tlist li { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.tlist li:last-child { border-bottom: none; }
+.t-main { font-size: 14.5px; }
+.t-side { font-weight: 700; margin-right: 6px; }
+.t-res { text-align: right; font-weight: 700; }
+.t-meta { color: var(--dim); font-size: 13px; }
+.t-usd { text-align: right; color: var(--dim); font-size: 13px; }
+.empty { color: var(--dim); font-size: 14px; padding: 8px 0; }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 1180px) {
+  .layout { grid-template-columns: minmax(0, 1fr) 360px; grid-template-areas: "chart pos" "clock clock" "perf trades"; }
+}
+@media (max-width: 760px) {
+  .top { padding: 14px 16px; gap: 10px 16px; }
+  .brand-desc { display: none; }
+  .price-val { font-size: 24px; }
+  .conn { width: 100%; }
+  .alert { margin: 12px 16px 0; }
+  .layout { padding: 14px 16px 24px; grid-template-columns: minmax(0, 1fr); grid-template-areas: "pos" "chart" "clock" "perf" "trades"; }
+  .chart-box { min-height: 340px; }
+  .side { font-size: 52px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 </style>
 </head>
 <body>
-<div class="root">
-  <header class="header">
-    <div class="logo-block">
-      <span class="logo">◈ MACD 4H BOT</span>
-      <span class="logo-sub">BTC-USDT-SWAP · 4H · 1x · MACD 24/52/18</span>
-    </div>
-    <div class="h-center">
-      <span class="h-price-label">BTC/USD</span><span id="h-price" class="h-price-val">—</span>
-    </div>
-    <div class="h-right">
-      <div class="status-pill" id="status-pill"><span class="status-dot"></span><span id="status-text">CONNECTING</span></div>
-      <div class="cooldown-badge" id="cooldown-badge"><div class="cooldown-dot"></div><span id="cooldown-text">Próxima vela --</span></div>
-      <span id="h-update" class="h-update">—</span>
-    </div>
-  </header>
 
-  <!-- DESKTOP LAYOUT -->
-  <div class="desktop-layout">
-    <div class="col-left">
-      <div class="sec">
-        <div class="sec-label">Posición activa</div>
-        <div class="pos-side muted" id="desk-pos-side">FLAT</div>
-        <div class="pos-grid">
-          <div class="pos-item"><div class="pos-item-label">Entrada</div><div class="pos-item-val" id="desk-pos-entry">—</div></div>
-          <div class="pos-item"><div class="pos-item-label">PnL flotante</div><div class="pos-item-val" id="desk-pos-pnl">—</div></div>
-          <div class="pos-item"><div class="pos-item-label">Stop inicial</div><div class="pos-item-val muted" id="desk-pos-tp">—</div></div>
-          <div class="pos-item"><div class="pos-item-label red">Stop actual (OKX)</div><div class="pos-item-val red" id="desk-pos-sl">—</div></div>
-          <div class="pos-item"><div class="pos-item-label">Duración</div><div class="pos-item-val muted" id="desk-pos-dur">—</div></div>
-          <div class="pos-item" id="desk-trailing-row"><div class="pos-item-label yellow">Trailing stop</div><div class="pos-item-val muted" id="desk-trailing-val">Inactivo</div></div>
-        </div>
-        <div class="pos-cool" id="desk-pos-cool-row" style="display:none"><span id="desk-pos-cool">—</span></div>
-      </div>
-
-      <div class="sec">
-        <div class="sec-label">Rendimiento</div>
-        <div class="metrics-grid">
-          <div class="met"><div class="met-val" id="desk-m-return">—</div><div class="met-lbl">RETURN</div></div>
-          <div class="met"><div class="met-val" id="desk-m-wr">—</div><div class="met-lbl">WIN RATE</div></div>
-          <div class="met"><div class="met-val" id="desk-m-cap">—</div><div class="met-lbl">CAPITAL</div></div>
-          <div class="met"><div class="met-val" id="desk-m-pnl">—</div><div class="met-lbl">GROSS PnL</div></div>
-          <div class="met"><div class="met-val" id="desk-m-dd">—</div><div class="met-lbl">MAX DD</div></div>
-          <div class="met"><div class="met-val" id="desk-m-wl">—</div><div class="met-lbl">W / L</div></div>
-        </div>
-      </div>
-
-      <div class="sec" style="flex:1">
-        <div class="sec-label">Estado MACD · próximo cruce</div>
-        <div class="gauge-wrap">
-          <svg class="gauge-svg" width="76" height="76" viewBox="0 0 100 100">
-            <circle cx="50" cy="50" r="42" fill="none" stroke="var(--bg3)" stroke-width="10"/>
-            <circle id="desk-gauge-circle" cx="50" cy="50" r="42" fill="none" stroke="var(--muted)" stroke-width="10"
-              stroke-linecap="round" stroke-dasharray="264" stroke-dashoffset="264" transform="rotate(-90 50 50)"/>
-          </svg>
-          <div class="gauge-text">
-            <div class="gauge-pct" id="desk-gauge-pct">0%</div>
-            <div class="gauge-sub" id="desk-gauge-sub">Calculando condiciones…</div>
-          </div>
-        </div>
-        <div class="cond-list" id="desk-cond-list"></div>
-      </div>
-    </div>
-
-    <div class="col-center">
-      <div class="tv-wrap"><div class="tv-header"><span class="tv-label">BTC-USDT · 4H · MACD 24/52/18</span></div>
-        <div id="tv-chart-container"></div>
-      </div>
-    </div>
-
-    <div class="col-right">
-      <div class="sec"><div class="sec-label">Indicadores</div>
-        <div class="ind-block"><div class="ind-row"><span class="ind-name">HISTOGRAMA MACD</span><span class="ind-val muted" id="desk-r-rsi">—</span></div>
-          <div class="bar-track"><div class="bar-fill" id="desk-rsi-bar" style="width:0%"></div></div></div>
-        <div class="ind-block"><div class="ind-row"><span class="ind-name">ATR 14 · 4H</span><span class="ind-val muted" id="desk-r-adx">—</span></div>
-          <div class="bar-track"><div class="bar-fill" id="desk-adx-bar" style="width:0%"></div></div></div>
-      </div>
-      <div class="sec trades-sec"><div class="trades-header">Últimas operaciones<button class="csv-btn" onclick="downloadCSV()">↓ CSV</button></div>
-        <div class="trades-wrap">
-          <div class="trade-row trade-row-head">
-            <span>Lado</span><span>Entrada</span><span>Salida</span><span>PnL</span><span>Salida por</span>
-          </div>
-          <div class="trade-rows" id="desk-trades-tbody"><div class="trade-row"><span class="trade-empty">Sin operaciones</span></div></div>
-        </div>
-      </div>
-      <div class="sec"><div class="sec-label">Historial diario</div>
-        <div class="day-list" id="desk-snap-rows"><div class="day-row"><span class="day-date">Sin datos</span></div></div>
-      </div>
-    </div>
+<header class="top">
+  <div class="brand">
+    <span class="brand-name">MACD 4H</span>
+    <span class="brand-desc">Bot de tendencia en BTC-USDT perpetuo, OKX</span>
   </div>
-
-  <!-- MOBILE LAYOUT -->
-  <div class="mobile-layout">
-    <div class="mobile-card">
-      <div class="mobile-price-row"><span style="font-size:9px;color:var(--muted2)">BTC/USD</span><div class="mobile-price-val" id="mobile-price">—</div></div>
-    </div>
-
-    <div class="mobile-card"><div class="mobile-card-title">Posición activa</div>
-      <div class="mobile-pos-side flat" id="mobile-pos-side">FLAT</div>
-      <div class="mobile-pos-grid">
-        <div class="pos-item"><div class="pos-item-label">Entrada</div><div class="pos-item-val" id="mobile-pos-entry">—</div></div>
-        <div class="pos-item"><div class="pos-item-label">PnL</div><div class="pos-item-val" id="mobile-pos-pnl">—</div></div>
-        <div class="pos-item"><div class="pos-item-label">Stop inicial</div><div class="pos-item-val muted" id="mobile-pos-tp">—</div></div>
-        <div class="pos-item"><div class="pos-item-label red">Stop actual</div><div class="pos-item-val red" id="mobile-pos-sl">—</div></div>
-        <div class="pos-item"><div class="pos-item-label">Duración</div><div class="pos-item-val" id="mobile-pos-dur">—</div></div>
-        <div class="pos-item" id="mobile-trailing-row"><div class="pos-item-label yellow">Trailing stop</div><div class="pos-item-val muted" id="mobile-trailing-val">Inactivo</div></div>
-      </div>
-      <div class="pos-cool" id="mobile-pos-cool-row" style="display:none"><span id="mobile-pos-cool">—</span></div>
-    </div>
-
-    <div class="mobile-card"><div class="mobile-card-title">Estado MACD · próximo cruce</div>
-      <div class="gauge-wrap">
-        <svg class="gauge-svg" width="72" height="72" viewBox="0 0 100 100">
-          <circle cx="50" cy="50" r="42" fill="none" stroke="var(--bg3)" stroke-width="10"/>
-          <circle id="mobile-gauge-circle" cx="50" cy="50" r="42" fill="none" stroke="var(--muted)" stroke-width="10"
-            stroke-linecap="round" stroke-dasharray="264" stroke-dashoffset="264" transform="rotate(-90 50 50)"/>
-        </svg>
-        <div class="gauge-text">
-          <div class="gauge-pct" id="mobile-gauge-pct">0%</div>
-          <div class="gauge-sub" id="mobile-gauge-sub">Calculando condiciones…</div>
-        </div>
-      </div>
-      <div class="cond-list" id="mobile-cond-list"></div>
-    </div>
-
-    <div class="mobile-card"><div class="mobile-card-title">Indicadores</div>
-      <div class="ind-block"><div class="ind-row"><span class="ind-name">HISTOGRAMA MACD</span><span class="ind-val muted" id="mobile-rsi">—</span></div>
-        <div class="bar-track"><div class="bar-fill" id="mobile-rsi-bar" style="width:0%"></div></div></div>
-      <div class="ind-block" style="margin-bottom:0"><div class="ind-row"><span class="ind-name">ATR 14 · 4H</span><span class="ind-val muted" id="mobile-adx">—</span></div>
-        <div class="bar-track"><div class="bar-fill" id="mobile-adx-bar" style="width:0%"></div></div></div>
-    </div>
-
-    <div class="mobile-card"><div class="mobile-card-title">Rendimiento</div>
-      <div class="mobile-metrics">
-        <div class="mobile-met"><div class="met-lbl">RETURN</div><div class="met-val" id="mobile-return">—</div></div>
-        <div class="mobile-met"><div class="met-lbl">CAPITAL</div><div class="met-val" id="mobile-capital">—</div></div>
-        <div class="mobile-met"><div class="met-lbl">WIN RATE</div><div class="met-val" id="mobile-wr">—</div></div>
-        <div class="mobile-met"><div class="met-lbl">MAX DD</div><div class="met-val" id="mobile-dd">—</div></div>
-        <div class="mobile-met"><div class="met-lbl">W / L</div><div class="met-val" id="mobile-wl">—</div></div>
-        <div class="mobile-met"><div class="met-lbl">GROSS PnL</div><div class="met-val" id="mobile-pnl">—</div></div>
-      </div>
-    </div>
-
-    <div class="mobile-card"><div class="mobile-card-title">Historial diario</div>
-      <div class="day-list" id="mobile-snap-rows"><div class="day-row"><span class="day-date">Sin datos</span></div></div>
-    </div>
-
-    <div class="mobile-card"><div class="mobile-card-title">Últimas operaciones</div>
-      <div class="mobile-trades">
-        <table>
-          <thead><tr><th>Lado</th><th>Entrada</th><th>PnL</th><th>Salida por</th></tr></thead>
-          <tbody id="mobile-trades-body"><tr><td colspan="4">Sin operaciones</td></tr></tbody>
-        </table>
-      </div>
-    </div>
+  <div class="price"><span class="price-label">BTC</span><span class="price-val" id="price">—</span></div>
+  <div class="conn" id="conn" data-state="idle" role="status" aria-live="polite">
+    <span class="conn-dot"></span><span id="conn-text">Conectando con el bot…</span>
   </div>
-</div>
+</header>
+
+<div class="alert" id="alert" role="alert"></div>
+
+<main class="layout">
+
+  <section class="panel chart" aria-labelledby="chart-title">
+    <div class="chart-head">
+      <h2 id="chart-title">Últimas 60 velas de 4 horas</h2>
+      <div class="legend" aria-hidden="true">
+        <span><i class="sw" style="background:var(--long)"></i>Histograma alcista</span>
+        <span><i class="sw" style="background:var(--short)"></i>Histograma bajista</span>
+        <span><i class="sw" style="background:var(--amber)"></i>Stop en OKX</span>
+        <span><i class="sw" style="background:var(--dim)"></i>Entrada</span>
+      </div>
+    </div>
+    <div class="chart-box" id="chart-box">
+      <svg id="chart" role="img" aria-label="Precio de BTC e histograma del MACD de las últimas velas de 4 horas"></svg>
+      <div class="chart-empty" id="chart-empty">El gráfico aparece cuando el bot guarde su historial de velas.<br>Con la versión nueva del bot ocurre en menos de un minuto.</div>
+      <div class="tip" id="tip"></div>
+    </div>
+  </section>
+
+  <aside class="panel pos" aria-labelledby="pos-title">
+    <h2 id="pos-title">Posición</h2>
+    <div class="side flat" id="side">—</div>
+    <div class="side-sub" id="side-sub">Esperando datos del bot.</div>
+    <dl class="facts" id="facts"></dl>
+    <div class="ruler" id="ruler"></div>
+    <p class="macd-note" id="macd-note"></p>
+  </aside>
+
+  <section class="panel clock" aria-labelledby="clock-title">
+    <h2 id="clock-title">Decisiones del día</h2>
+    <div class="clock-next" id="clock-next">—</div>
+    <div class="clock-sub">El bot evalúa el MACD solo al cierre de cada vela de 4 horas.</div>
+    <div class="track" id="track"></div>
+  </section>
+
+  <section class="panel perf" aria-labelledby="perf-title">
+    <h2 id="perf-title">Rendimiento</h2>
+    <div class="stats">
+      <div><div class="stat-v" id="s-cap">—</div><div class="stat-l">Capital</div></div>
+      <div><div class="stat-v" id="s-ret">—</div><div class="stat-l" id="s-ret-l">Resultado desde el inicio</div></div>
+      <div><div class="stat-v" id="s-wl">—</div><div class="stat-l" id="s-wl-l">Ganadas / perdidas</div></div>
+      <div><div class="stat-v" id="s-dd">—</div><div class="stat-l">Caída máxima</div></div>
+    </div>
+  </section>
+
+  <section class="panel trades" aria-labelledby="trades-title">
+    <div class="trades-head">
+      <h2 id="trades-title">Operaciones</h2>
+      <button class="btn" id="csv" type="button">Descargar CSV</button>
+    </div>
+    <ul class="tlist" id="tlist"><li class="empty">Todavía no hay operaciones cerradas.</li></ul>
+  </section>
+
+</main>
 
 <script>
 const API_BASE = "https://matiasbarone.pythonanywhere.com";
 const API = `${API_BASE}/api/4h`;
-const REFRESH = 30000;
-const GAUGE_CIRCUM = 264; // 2 * PI * 42
-const CT_VAL = 0.01;      // BTC por contrato en BTC-USDT-SWAP
-let allTrades = [], allSnapshots = [];
+const REFRESH_MS = 30000;
+const BAR_MS = 4 * 3600 * 1000;
+const CT_VAL = 0.01;               // BTC por contrato (BTC-USDT-SWAP)
+const STALE_SEC = 300;             // sin actualizar > 5 min = bot caído
 
-const fmtUsd = (v, d = 0) => `$${Number(v).toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d })}`;
-const isNum = v => v !== undefined && v !== null && !isNaN(v);
+let STATE = null, TRADES = [];
 
-// Agrupa trades por día y suma el PnL de cada día
-function buildDailyHistory(trades) {
-  const map = {};
-  (trades || []).forEach(t => {
-    if (!t.timestamp) return;
-    const date = t.timestamp.slice(0, 10);
-    if (!map[date]) map[date] = { date, pnlUsd: 0, wins: 0, losses: 0 };
-    const pnl = t.pnl_usd || 0;
-    map[date].pnlUsd += pnl;
-    if (pnl > 0) map[date].wins++; else map[date].losses++;
-  });
-  return Object.values(map).sort((a, b) => b.date.localeCompare(a.date));
+const $ = id => document.getElementById(id);
+const isNum = v => typeof v === "number" && isFinite(v);
+const nf = (v, d = 0) => Number(v).toLocaleString("es-AR", { minimumFractionDigits: d, maximumFractionDigits: d });
+const usd = (v, d = 0) => `${v < 0 ? "−" : ""}$${nf(Math.abs(v), d)}`;
+const pct = (v, d = 2) => `${v > 0 ? "+" : v < 0 ? "−" : ""}${nf(Math.abs(v), d)}%`;
+const signCls = v => v > 0 ? "up" : v < 0 ? "down" : "";
+const hhmm = ms => new Date(ms).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false });
+const ddmm = ms => new Date(ms).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit" });
+function dur(sec) {
+  sec = Math.max(0, Math.round(sec));
+  const d = Math.floor(sec / 86400), h = Math.floor(sec % 86400 / 3600), m = Math.floor(sec % 3600 / 60);
+  if (d) return `${d} d ${h} h`;
+  if (h) return `${h} h ${m} min`;
+  if (m) return `${m} min`;
+  return `${sec} s`;
 }
 
-function renderDailyHistory(elId, trades, limit) {
-  const el = document.getElementById(elId);
-  const days = buildDailyHistory(trades).slice(0, limit);
-  if (days.length === 0) { el.innerHTML = '<div class="day-row"><span class="day-date">Sin datos</span></div>'; return; }
-  el.innerHTML = days.map(d => {
-    const cls = d.pnlUsd >= 0 ? "green" : "red";
-    return `<div class="day-row"><span class="day-date">${d.date}</span>
-      <span class="day-result"><span class="day-wl">${d.wins}W/${d.losses}L</span>
-      <span class="day-val ${cls}">${d.pnlUsd >= 0 ? "+" : "-"}$${Math.abs(d.pnlUsd).toFixed(2)}</span></span></div>`;
+/* ---------------- Conexión ---------------- */
+async function getJSON(path) {
+  let r;
+  try { r = await fetch(`${API}/${path}`, { cache: "no-store" }); }
+  catch (e) { throw { kind: "net" }; }
+  let body = null;
+  try { body = await r.json(); } catch (e) { body = null; }
+  if (!r.ok && path !== "status") throw { kind: "http", status: r.status };
+  if (body === null) throw { kind: "parse", status: r.status };
+  return body;
+}
+
+function setConn(state, text, alertText, alertKind) {
+  $("conn").dataset.state = state;
+  $("conn-text").textContent = text;
+  const a = $("alert");
+  a.textContent = alertText || "";
+  a.className = `alert${alertText ? " show" : ""}${alertKind === "warn" ? " warn" : ""}`;
+}
+
+async function refresh() {
+  let state, trades;
+  try {
+    [state, trades] = await Promise.all([getJSON("state"), getJSON("trades")]);
+  } catch (e) {
+    if (e.kind === "net") setConn("error", "Sin conexión con la API",
+      `No se pudo conectar con ${API_BASE}. Si la dirección abre en el navegador, revisá que la web app de PythonAnywhere esté activa y recargada.`);
+    else if (e.kind === "http") setConn("error", `La API respondió error ${e.status}`,
+      `La API respondió con error ${e.status}. Abrí el error log de la web app en PythonAnywhere para ver el motivo.`);
+    else setConn("error", "Respuesta inválida de la API",
+      "La API no devolvió datos válidos. Probablemente la web app está mostrando una página de error: revisá el error log en PythonAnywhere.");
+    return;
+  }
+  if (state && state.error) {
+    setConn("warn", "El bot todavía no generó datos",
+      "La API funciona, pero no encuentra el archivo de estado del bot. Verificá que la tarea siempre encendida esté corriendo en /home/Matiasbarone/4H.", "warn");
+    return;
+  }
+  STATE = state; TRADES = Array.isArray(trades) ? trades : [];
+  const age = state.updated ? (Date.now() - Date.parse(state.updated)) / 1000 : Infinity;
+  if (age > STALE_SEC) setConn("warn", `Sin actualizar hace ${dur(age)}`,
+    `El bot no actualiza sus datos hace ${dur(age)}. Revisá la tarea siempre encendida en PythonAnywhere y el archivo bot.log.`, "warn");
+  else setConn("ok", `Bot activo, actualizado hace ${dur(age)}`);
+  render();
+}
+
+/* ---------------- Render ---------------- */
+function render() {
+  const s = STATE; if (!s) return;
+  const price = s.last_price;
+  if (isNum(price)) $("price").textContent = usd(price, 1);
+  renderPosition(s, price);
+  renderClock(s);
+  renderPerf(s);
+  renderTrades();
+  drawChart();
+}
+
+function macdReading(s) {
+  const h = s.macd_hist, hp = s.macd_hist_prev;
+  if (!isNum(h) || !isNum(hp)) return { text: "Todavía no hay una vela cerrada evaluada.", next: null };
+  const above = h > 0, closing = Math.abs(h) < Math.abs(hp), speed = Math.abs(h - hp);
+  const next = above ? "SHORT" : "LONG";
+  const where = above ? "por encima de su señal" : "por debajo de su señal";
+  let text;
+  if (closing && speed > 0) {
+    const n = Math.max(1, Math.round(Math.abs(h) / speed));
+    text = `El MACD está <strong>${where}</strong> (histograma ${nf(h, 1)}) y se acerca a ella: a este ritmo, el cruce ${next} llegaría en unas ${n} vela${n > 1 ? "s" : ""} de 4 h.`;
+  } else {
+    text = `El MACD está <strong>${where}</strong> (histograma ${nf(h, 1)}) y se aleja: no hay un cruce cerca. El próximo sería ${next}.`;
+  }
+  return { text, next };
+}
+
+function renderPosition(s, price) {
+  const side = s.position, mr = macdReading(s);
+  const el = $("side"), facts = $("facts"), ruler = $("ruler");
+  if (side && isNum(s.entry_price) && s.entry_price > 0 && isNum(price)) {
+    const dir = side === "LONG" ? 1 : -1, entry = s.entry_price;
+    const move = (price - entry) / entry * 100 * dir;
+    const pnl = (price - entry) * dir * (s.position_size_contracts || 0) * CT_VAL;
+    const notional = (s.position_size_contracts || 0) * CT_VAL * price;
+    const sl = s.dynamic_sl_price, sl0 = s.initial_sl;
+    const lock = isNum(sl) ? (sl - entry) / entry * 100 * dir : null;
+    const distStop = isNum(sl) ? Math.abs(price - sl) / price * 100 : null;
+    el.textContent = side; el.className = `side ${side.toLowerCase()}`;
+    $("side-sub").textContent = `Abierta hace ${dur(Date.now() / 1000 - (s.entry_time || 0))}, ${nf(s.position_size_contracts || 0, 2)} contratos (≈ ${usd(notional)}).`;
+    facts.innerHTML = `
+      <dt>Entrada</dt><dd>${usd(entry, 1)}</dd>
+      <dt>Resultado flotante</dt><dd class="${signCls(move)}">${pct(move)}<small>${usd(pnl, 2)}</small></dd>
+      <dt>Stop en OKX</dt><dd class="amber">${isNum(sl) ? usd(sl, 1) : "—"}<small>${isNum(distStop) ? `a ${nf(distStop, 2)}% del precio` : ""}</small></dd>
+      <dt>${s.trailing_active ? "Ganancia asegurada" : "Stop inicial"}</dt>
+      <dd>${s.trailing_active ? `<span class="${signCls(lock)}">${pct(lock)}</span><small>el trailing ya movió el stop</small>`
+                              : `${isNum(sl0) ? usd(sl0, 1) : "—"}<small>el trailing todavía no se movió</small>`}</dd>`;
+    ruler.innerHTML = rulerSVG(dir, entry, price, sl);
+    $("macd-note").innerHTML = `${mr.text} Si llega un cruce ${side === "LONG" ? "SHORT" : "LONG"}, el bot cierra esta posición y abre la contraria.`;
+  } else {
+    el.textContent = "Sin posición"; el.className = "side flat";
+    $("side-sub").textContent = mr.next ? `Espera el próximo cruce del MACD. Sería ${mr.next}.` : "Espera el próximo cruce del MACD.";
+    facts.innerHTML = ""; ruler.innerHTML = "";
+    $("macd-note").innerHTML = mr.text;
+  }
+}
+
+function rulerSVG(dir, entry, price, sl) {
+  const pts = [entry, price]; if (isNum(sl)) pts.push(sl);
+  const lo = Math.min(...pts), hi = Math.max(...pts), pad = (hi - lo) * 0.12 || 1;
+  const x = v => 4 + (v - (lo - pad)) / ((hi + pad) - (lo - pad)) * 92;
+  const mark = (v, color, label, y, anchor) =>
+    `<line x1="${x(v)}%" x2="${x(v)}%" y1="14" y2="30" stroke="${color}" stroke-width="2"/>
+     <text x="${x(v)}%" y="${y}" fill="${color}" font-size="12" text-anchor="${anchor}">${label}</text>`;
+  const gain = (price - entry) * dir >= 0;
+  return `<svg aria-label="Ubicación del precio entre la entrada y el stop">
+    <line x1="2%" x2="98%" y1="22" y2="22" stroke="var(--line)" stroke-width="3" stroke-linecap="round"/>
+    <line x1="${x(Math.min(entry, price))}%" x2="${x(Math.max(entry, price))}%" y1="22" y2="22" stroke="${gain ? "var(--long)" : "var(--short)"}" stroke-width="3"/>
+    ${isNum(sl) ? mark(sl, "var(--amber)", "stop", 46, "middle") : ""}
+    ${mark(entry, "var(--dim)", "entrada", 46, "middle")}
+    <circle cx="${x(price)}%" cy="22" r="6" fill="var(--text)"/>
+    <text x="${x(price)}%" y="9" fill="var(--text)" font-size="12" text-anchor="middle">ahora</text>
+  </svg>`;
+}
+
+function renderClock(s) {
+  const next = s.next_candle_close_ms;
+  if (!isNum(next)) { $("clock-next").textContent = "—"; $("track").innerHTML = ""; return; }
+  const now = Date.now();
+  let nxt = next; while (nxt < now) nxt += BAR_MS;           // por si el estado es de hace un rato
+  $("clock-next").textContent = `Próxima decisión a las ${hhmm(nxt)}, en ${dur((nxt - now) / 1000)}`;
+  // eje de 24 h del día local actual
+  const d0 = new Date(now); d0.setHours(0, 0, 0, 0);
+  const start = d0.getTime(), span = 24 * 3600 * 1000;
+  const xs = [];
+  for (let t = nxt - 6 * BAR_MS; t <= nxt + 6 * BAR_MS; t += BAR_MS) if (t >= start && t < start + span) xs.push(t);
+  const pos = t => ((t - start) / span * 100).toFixed(2);
+  $("track").innerHTML =
+    `<div class="track-line"></div><div class="track-done" style="width:${pos(now)}%"></div>` +
+    xs.map(t => `<div class="notch${t === nxt ? " next" : ""}" style="left:${pos(t)}%"></div>
+                 <div class="notch-l${t === nxt ? " next" : ""}" style="left:${pos(t)}%">${hhmm(t)}</div>`).join("") +
+    `<div class="now" style="left:${pos(now)}%" title="ahora"></div>`;
+}
+
+function renderPerf(s) {
+  const cap = s.capital, init = s.initial_capital;
+  $("s-cap").textContent = isNum(cap) ? usd(cap, 2) : "—";
+  if (isNum(cap) && isNum(init) && init > 0) {
+    const r = (cap - init) / init * 100;
+    $("s-ret").innerHTML = `<span class="${signCls(r)}">${pct(r)}</span>`;
+    $("s-ret-l").textContent = `Resultado desde el inicio (${usd(cap - init, 2)})`;
+  }
+  const w = s.total_wins || 0, l = s.total_losses || 0, n = w + l;
+  $("s-wl").innerHTML = `<span class="up">${w}</span> / <span class="down">${l}</span>`;
+  $("s-wl-l").textContent = n ? `Ganadas / perdidas (${nf(w / n * 100, 0)}% de acierto)` : "Ganadas / perdidas";
+  $("s-dd").textContent = isNum(s.max_drawdown_pct) ? `${nf(s.max_drawdown_pct, 1)}%` : "—";
+}
+
+const REASONS = { STOP: "salió por stop", TRAILING: "salió por trailing", CRUCE_CONTRARIO: "salió por cruce contrario" };
+function renderTrades() {
+  const list = [...TRADES].reverse().slice(0, 8);
+  if (!list.length) { $("tlist").innerHTML = `<li class="empty">Todavía no hay operaciones cerradas. El bot opera solo cuando el MACD cruza su señal.</li>`; return; }
+  $("tlist").innerHTML = list.map(t => {
+    const r = isNum(t.ret_pct) ? t.ret_pct : (isNum(t.pnl_pct_neto) ? t.pnl_pct_neto : 0);
+    const when = t.exit_time ? new Date(t.exit_time) : new Date(t.timestamp);
+    const sideCls = t.side === "LONG" ? "up" : "down";
+    return `<li>
+      <span class="t-main"><span class="t-side ${sideCls}">${t.side}</span>${usd(t.entry_price || 0)} a ${usd(t.exit_price || 0)}</span>
+      <span class="t-res ${signCls(r)}">${pct(r)}</span>
+      <span class="t-meta">${ddmm(when)} ${hhmm(when)}, ${REASONS[t.reason] || (t.reason || "").toLowerCase()}</span>
+      <span class="t-usd">${isNum(t.pnl_usd) ? usd(t.pnl_usd, 2) : ""}</span>
+    </li>`;
   }).join("");
 }
 
-// Estado MACD: qué tan cerca está el próximo cruce (estimación por la velocidad del histograma)
-function macdStatus(state) {
-  const h = state.macd_hist, hp = state.macd_hist_prev;
-  if (!isNum(h) || !isNum(hp)) return { pct: 0, text: "Esperando la primera vela cerrada…", conds: [] };
-  const above = h > 0;
-  const shrinking = Math.abs(h) < Math.abs(hp);
-  const speed = Math.abs(h - hp);
-  let velas = shrinking && speed > 0 ? Math.abs(h) / speed : Infinity;
-  let pct = 0;
-  if (shrinking) pct = velas <= 1 ? 100 : velas <= 2 ? 75 : velas <= 4 ? 50 : velas <= 8 ? 25 : 10;
-  const next = above ? "SHORT" : "LONG";
-  const text = shrinking
-    ? `Histograma acercándose a cero: cruce ${next} estimado en ~${Math.max(1, Math.round(velas))} vela(s) de 4h`
-    : `Histograma alejándose de cero: sin cruce cercano (próximo sería ${next})`;
-  const conds = [
-    { label: "MACD vs señal", ok: above, value: above ? "ARRIBA (alcista)" : "ABAJO (bajista)" },
-    { label: "Histograma", ok: above, value: h.toFixed(1) },
-    { label: "Tendencia del histograma", ok: shrinking, value: shrinking ? "hacia el cruce" : "alejándose" },
-    { label: "Próxima señal posible", ok: true, value: next },
-  ];
-  return { pct, text, conds, next };
-}
+/* ---------------- Gráfico (SVG propio) ---------------- */
+function drawChart() {
+  const s = STATE, svg = $("chart"), box = $("chart-box");
+  const H = (s && s.macd_history) || [];
+  $("chart-empty").style.display = H.length < 5 ? "flex" : "none";
+  if (H.length < 5) { svg.innerHTML = ""; return; }
+  const W = box.clientWidth, Ht = box.clientHeight;
+  const padL = 8, padR = 74, padT = 10, gap = 18, axisH = 22;
+  const priceH = Math.round((Ht - axisH - gap) * 0.64), histH = Ht - axisH - gap - priceH - padT;
+  const n = H.length, cw = (W - padL - padR) / n;
+  const X = i => padL + cw * i + cw / 2;
 
-function updateGauge(prefix, ms, reason) {
-  const circle = document.getElementById(`${prefix}-gauge-circle`);
-  const pctEl = document.getElementById(`${prefix}-gauge-pct`);
-  const subEl = document.getElementById(`${prefix}-gauge-sub`);
-  const listEl = document.getElementById(`${prefix}-cond-list`);
-  const pct = ms.pct;
-  circle.style.strokeDashoffset = GAUGE_CIRCUM - (pct / 100) * GAUGE_CIRCUM;
-  const color = pct >= 75 ? "var(--green)" : pct >= 25 ? "var(--yellow)" : "var(--muted2)";
-  circle.style.stroke = color; pctEl.style.color = color; pctEl.textContent = `${pct}%`;
-  subEl.textContent = reason ? `${reason} · ${ms.text}` : ms.text;
-  listEl.innerHTML = ms.conds.map(c => `<div class="cond-row"><span class="cond-dot ${c.ok ? "ok" : "no"}"></span>
-    <span class="cond-label">${c.label}</span><span class="cond-val ${c.ok ? "green" : "muted"}">${c.value}</span></div>`).join("");
-}
+  // escala de precio (incluye entrada y stop si hay posición)
+  const extra = [];
+  if (s.position && isNum(s.entry_price) && s.entry_price > 0) extra.push(s.entry_price);
+  if (s.position && isNum(s.dynamic_sl_price)) extra.push(s.dynamic_sl_price);
+  if (isNum(s.last_price)) extra.push(s.last_price);
+  let lo = Math.min(...H.map(c => c.l), ...extra), hi = Math.max(...H.map(c => c.h), ...extra);
+  const pp = (hi - lo) * 0.06; lo -= pp; hi += pp;
+  const Y = v => padT + (hi - v) / (hi - lo) * priceH;
 
-function countdown(ms) {
-  if (!ms) return "--";
-  const s = Math.max(0, Math.floor((ms - Date.now()) / 1000));
-  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
-  const hora = new Date(ms).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false });
-  return `${hora} (en ${h}h ${m}m)`;
-}
+  const hmax = Math.max(...H.map(c => Math.abs(c.hist)), 1);
+  const hTop = padT + priceH + gap, hMid = hTop + histH / 2;
+  const YH = v => hMid - v / hmax * (histH / 2 - 2);
 
-async function fetchAll() {
-  try {
-    const [stR, trR, snR, alR] = await Promise.all([
-      fetch(`${API}/state`), fetch(`${API}/trades`), fetch(`${API}/snapshots`), fetch(`${API}/status`).catch(() => null)
-    ]);
-    const state = await stR.json();
-    allTrades = await trR.json(); if (!Array.isArray(allTrades)) allTrades = [];
-    allSnapshots = await snR.json(); if (!Array.isArray(allSnapshots)) allSnapshots = [];
-    const alive = alR ? (await alR.json()).alive : false;
-
-    const cap = state.capital || 0;
-    const init = state.initial_capital || cap;
-    const ret = init > 0 ? (cap - init) / init * 100 : 0;
-    const wins = state.total_wins || 0, losses = state.total_losses || 0, tot = wins + losses;
-    const wr = tot > 0 ? wins / tot * 100 : 0;
-    const dd = state.max_drawdown_pct || 0;
-    const price = state.last_price || 0;
-
-    // Header
-    if (price) document.getElementById("h-price").textContent = fmtUsd(price, 1);
-    document.getElementById("h-update").textContent = new Date().toLocaleTimeString("es-AR");
-    document.getElementById("cooldown-text").textContent = `Próxima vela ${countdown(state.next_candle_close_ms)}`;
-    document.getElementById("cooldown-badge").classList.toggle("active", !!state.position);
-
-    // Estado MACD
-    const ms = macdStatus(state);
-    const reason = state.position ? `En ${state.position}: un cruce ${state.position === "LONG" ? "SHORT" : "LONG"} cierra y da vuelta` : null;
-    ["desk", "mobile"].forEach(p => updateGauge(p, ms, reason));
-
-    // Indicadores: histograma y ATR
-    if (isNum(state.macd_hist)) {
-      const h = state.macd_hist, atr = state.atr || 1;
-      const w = `${Math.min(100, Math.abs(h) / atr * 100)}%`, c = h >= 0 ? "var(--green)" : "var(--red)";
-      ["desk-r-rsi", "mobile-rsi"].forEach(id => { const e = document.getElementById(id); e.textContent = h.toFixed(1); e.className = `ind-val ${h >= 0 ? "green" : "red"}`; });
-      ["desk-rsi-bar", "mobile-rsi-bar"].forEach(id => { const e = document.getElementById(id); e.style.width = w; e.style.background = c; });
-    }
-    if (isNum(state.atr) && price) {
-      const ap = state.atr / price * 100;
-      ["desk-r-adx", "mobile-adx"].forEach(id => document.getElementById(id).textContent = `${fmtUsd(state.atr)} · ${ap.toFixed(2)}%`);
-      ["desk-adx-bar", "mobile-adx-bar"].forEach(id => { const e = document.getElementById(id); e.style.width = `${Math.min(100, ap / 2 * 100)}%`; e.style.background = "var(--accent)"; });
-    }
-    if (price) document.getElementById("mobile-price").textContent = fmtUsd(price, 1);
-
-    // Métricas
-    const retTxt = `${ret >= 0 ? "+" : ""}${ret.toFixed(2)}%`;
-    const capTxt = fmtUsd(cap);
-    const wrTxt = `${wr.toFixed(1)}%`;
-    const ddTxt = `${dd.toFixed(1)}%`;
-    const wlHtml = `<span class="green">${wins}</span>/<span class="red">${losses}</span>`;
-    const gp = state.gross_pnl || 0;
-    const pnlTxt = `${gp >= 0 ? "+" : "-"}$${Math.abs(gp).toFixed(2)}`;
-    [["desk-m-return", retTxt], ["desk-m-wr", wrTxt], ["desk-m-cap", capTxt], ["desk-m-pnl", pnlTxt], ["desk-m-dd", ddTxt],
-     ["mobile-return", retTxt], ["mobile-capital", capTxt], ["mobile-wr", wrTxt], ["mobile-dd", ddTxt], ["mobile-pnl", pnlTxt]]
-      .forEach(([id, v]) => document.getElementById(id).textContent = v);
-    document.getElementById("desk-m-wl").innerHTML = wlHtml;
-    document.getElementById("mobile-wl").innerHTML = wlHtml;
-
-    // Posición activa
-    if (state.position && state.entry_price) {
-      const side = state.position, entry = state.entry_price;
-      const dir = side === "LONG" ? 1 : -1;
-      const movePct = (price - entry) / entry * 100 * dir;
-      const pnlUsd = (price - entry) * dir * (state.position_size_contracts || 0) * CT_VAL;
-      const durH = state.entry_time ? (Date.now() / 1000 - state.entry_time) / 3600 : 0;
-      const sl = state.dynamic_sl_price, slInit = state.initial_sl;
-      const lockedPct = sl ? (sl - entry) / entry * 100 * dir : null;
-
-      [["desk", "pos-side"], ["mobile", "mobile-pos-side"]].forEach(([p, cls]) => {
-        const e = document.getElementById(`${p}-pos-side`); e.textContent = side; e.className = `${cls} ${side.toLowerCase()}`;
-        document.getElementById(`${p}-pos-entry`).textContent = fmtUsd(entry, 1);
-        document.getElementById(`${p}-pos-tp`).textContent = slInit ? fmtUsd(slInit, 1) : "—";
-        document.getElementById(`${p}-pos-sl`).textContent = sl ? `${fmtUsd(sl, 1)} (${lockedPct >= 0 ? "+" : ""}${lockedPct.toFixed(2)}%)` : "—";
-        document.getElementById(`${p}-pos-dur`).textContent = durH >= 24 ? `${(durH / 24).toFixed(1)}d` : `${durH.toFixed(1)}h`;
-        const pe = document.getElementById(`${p}-pos-pnl`);
-        pe.textContent = `${movePct >= 0 ? "+" : ""}${movePct.toFixed(2)}% · ${pnlUsd >= 0 ? "+" : "-"}$${Math.abs(pnlUsd).toFixed(2)}`;
-        pe.className = `pos-item-val ${movePct >= 0 ? "green" : "red"}`;
-        const row = document.getElementById(`${p}-trailing-row`), val = document.getElementById(`${p}-trailing-val`);
-        if (state.trailing_active && sl) { row.classList.add("active"); val.classList.remove("muted"); val.textContent = fmtUsd(sl, 1); }
-        else { row.classList.remove("active"); val.classList.add("muted"); val.textContent = "Aún en stop inicial"; }
-        document.getElementById(`${p}-pos-cool-row`).style.display = "none";
-      });
-    } else {
-      [["desk", "pos-side muted"], ["mobile", "mobile-pos-side flat"]].forEach(([p, cls]) => {
-        const e = document.getElementById(`${p}-pos-side`); e.textContent = "FLAT"; e.className = cls;
-        ["entry", "tp", "sl", "dur", "pnl"].forEach(k => document.getElementById(`${p}-pos-${k}`).textContent = "—");
-        document.getElementById(`${p}-trailing-row`).classList.remove("active");
-        const val = document.getElementById(`${p}-trailing-val`); val.classList.add("muted"); val.textContent = "Inactivo";
-        document.getElementById(`${p}-pos-cool-row`).style.display = "block";
-        document.getElementById(`${p}-pos-cool`).textContent = `Sin posición · esperando cruce ${ms.next || ""}`;
-      });
-    }
-
-    // Tablas de trades
-    const reasonLabels = { "STOP": "STOP", "TRAILING": "TRAIL", "CRUCE_CONTRARIO": "CRUCE" };
-    const rows = limit => [...allTrades].reverse().slice(0, limit).map(t => {
-      const pnl = isNum(t.pnl_pct_neto) ? t.pnl_pct_neto : 0;
-      const rc = (t.reason || "").replace(/\//g, "_");
-      return { t, pnl, rc, rl: reasonLabels[rc] || rc.slice(0, 8) };
-    });
-    const dr = rows(6);
-    document.getElementById("desk-trades-tbody").innerHTML = dr.length === 0
-      ? `<div class="trade-row"><span class="trade-empty">Sin operaciones todavía</span></div>`
-      : dr.map(({ t, pnl, rc, rl }) => `<div class="trade-row">
-        <span><span class="pill pill-${t.side}">${t.side}</span></span>
-        <span>${fmtUsd(t.entry_price || 0)}</span><span>${fmtUsd(t.exit_price || 0)}</span>
-        <span class="${pnl >= 0 ? "green" : "red"}">${pnl >= 0 ? "+" : ""}${pnl.toFixed(2)}%</span>
-        <span><span class="pill pill-${rc}">${rl}</span></span></div>`).join("");
-    const mr = rows(10);
-    document.getElementById("mobile-trades-body").innerHTML = mr.length === 0
-      ? `<tr><td colspan="4">Sin operaciones todavía</td></tr>`
-      : mr.map(({ t, pnl, rc, rl }) => `<tr><td><span class="pill pill-${t.side}">${t.side}</span></td>
-        <td>${fmtUsd(t.entry_price || 0)}</td><td class="${pnl >= 0 ? "green" : "red"}">${pnl >= 0 ? "+" : ""}${pnl.toFixed(2)}%</td>
-        <td><span class="pill pill-${rc}">${rl}</span></td></tr>`).join("");
-
-    renderDailyHistory("desk-snap-rows", allTrades, 6);
-    renderDailyHistory("mobile-snap-rows", allTrades, 10);
-
-    document.getElementById("status-pill").className = `status-pill ${alive ? "alive" : "dead"}`;
-    document.getElementById("status-text").textContent = alive ? "ACTIVO" : "SIN DATOS RECIENTES";
-  } catch (e) {
-    console.error(e);
-    document.getElementById("status-pill").className = "status-pill dead";
-    document.getElementById("status-text").textContent = "DESCONECTADO";
+  let g = "";
+  // guías de precio
+  for (let k = 0; k <= 3; k++) {
+    const v = lo + (hi - lo) * k / 3, y = Y(v);
+    g += `<line x1="${padL}" x2="${W - padR}" y1="${y}" y2="${y}" stroke="var(--line)" stroke-width="1"/>
+          <text x="${W - padR + 8}" y="${y + 4}" fill="var(--faint)" font-size="11.5">${nf(v, 0)}</text>`;
   }
+  // cruces del MACD (cambio de signo del histograma)
+  for (let i = 1; i < n; i++) {
+    if ((H[i].hist > 0) !== (H[i - 1].hist > 0)) {
+      const c = H[i].hist > 0 ? "var(--long)" : "var(--short)";
+      g += `<line x1="${X(i)}" x2="${X(i)}" y1="${padT}" y2="${hTop + histH}" stroke="${c}" stroke-opacity=".35" stroke-dasharray="2 4"/>`;
+    }
+  }
+  // velas
+  const bw = Math.max(1.5, cw * 0.56);
+  H.forEach((c, i) => {
+    const up = c.c >= c.o, col = up ? "var(--text)" : "var(--faint)";
+    const yo = Y(c.o), yc = Y(c.c);
+    g += `<line x1="${X(i)}" x2="${X(i)}" y1="${Y(c.h)}" y2="${Y(c.l)}" stroke="${col}" stroke-width="1"/>
+          <rect x="${X(i) - bw / 2}" y="${Math.min(yo, yc)}" width="${bw}" height="${Math.max(1, Math.abs(yc - yo))}"
+                fill="${up ? "var(--ink)" : col}" stroke="${col}" stroke-width="1"/>`;
+  });
+  // entrada y stop
+  const tag = (y, color, label) =>
+    `<rect x="${W - padR + 2}" y="${y - 10}" width="${padR - 4}" height="20" rx="4" fill="${color}"/>
+     <text x="${W - padR + padR / 2}" y="${y + 4}" fill="var(--ink)" font-size="11.5" font-weight="700" text-anchor="middle">${label}</text>`;
+  if (s.position && isNum(s.entry_price) && s.entry_price > 0) {
+    const y = Y(s.entry_price);
+    g += `<line x1="${padL}" x2="${W - padR}" y1="${y}" y2="${y}" stroke="var(--dim)" stroke-dasharray="5 5"/>` + tag(y, "var(--dim)", nf(s.entry_price, 0));
+  }
+  if (s.position && isNum(s.dynamic_sl_price)) {
+    const y = Y(s.dynamic_sl_price);
+    g += `<line x1="${padL}" x2="${W - padR}" y1="${y}" y2="${y}" stroke="var(--amber)" stroke-width="1.5"/>` + tag(y, "var(--amber)", nf(s.dynamic_sl_price, 0));
+  }
+  if (isNum(s.last_price)) {
+    const y = Y(s.last_price);
+    g += `<circle cx="${X(n - 1) + cw / 2}" cy="${y}" r="3.5" fill="var(--text)"/>`;
+  }
+  // histograma
+  g += `<line x1="${padL}" x2="${W - padR}" y1="${hMid}" y2="${hMid}" stroke="var(--line)"/>
+        <text x="${W - padR + 8}" y="${hTop + 10}" fill="var(--faint)" font-size="11.5">MACD</text>`;
+  H.forEach((c, i) => {
+    const prev = i ? H[i - 1].hist : c.hist, growing = Math.abs(c.hist) >= Math.abs(prev);
+    const col = c.hist >= 0 ? "var(--long)" : "var(--short)";
+    const y = YH(c.hist);
+    g += `<rect x="${X(i) - bw / 2}" y="${Math.min(y, hMid)}" width="${bw}" height="${Math.max(1, Math.abs(y - hMid))}" fill="${col}" fill-opacity="${growing ? 0.95 : 0.45}"/>`;
+  });
+  // eje de tiempo: una etiqueta por día
+  let lastLbl = -1e9;
+  H.forEach((c, i) => {
+    const d = new Date(c.t);
+    if (d.getHours() < 4 && i > 0 && X(i) - lastLbl > 48) {
+      g += `<text x="${X(i)}" y="${Ht - 4}" fill="var(--faint)" font-size="11.5" text-anchor="middle">${ddmm(c.t)}</text>`;
+      lastLbl = X(i);
+    }
+  });
+  // zona sensible para el tooltip
+  g += `<rect id="hit" x="${padL}" y="0" width="${W - padL - padR}" height="${Ht}" fill="transparent"/>
+        <line id="cursor" y1="${padT}" y2="${hTop + histH}" stroke="var(--dim)" stroke-opacity=".5" visibility="hidden"/>`;
+  svg.setAttribute("viewBox", `0 0 ${W} ${Ht}`);
+  svg.innerHTML = g;
+
+  const hit = svg.querySelector("#hit"), cur = svg.querySelector("#cursor"), tip = $("tip");
+  hit.addEventListener("pointermove", ev => {
+    const r = svg.getBoundingClientRect();
+    const i = Math.min(n - 1, Math.max(0, Math.floor((ev.clientX - r.left - padL) / cw)));
+    const c = H[i];
+    cur.setAttribute("x1", X(i)); cur.setAttribute("x2", X(i)); cur.setAttribute("visibility", "visible");
+    tip.innerHTML = `<b>${ddmm(c.t)} ${hhmm(c.t)}–${hhmm(c.t + BAR_MS)}</b><br>Cierre ${usd(c.c, 1)}<br>Histograma <span class="${signCls(c.hist)}">${nf(c.hist, 1)}</span>`;
+    tip.style.display = "block";
+    const tx = X(i) + 14, flip = tx + 180 > W;
+    tip.style.left = `${flip ? X(i) - 14 - tip.offsetWidth : tx}px`;
+    tip.style.top = `${padT + 6}px`;
+  });
+  hit.addEventListener("pointerleave", () => { tip.style.display = "none"; cur.setAttribute("visibility", "hidden"); });
 }
 
-function downloadCSV() {
-  if (!allTrades || allTrades.length === 0) return;
-  const headers = ["timestamp", "side", "entry_price", "exit_price", "duration_min", "ret_pct", "pnl_pct_neto", "pnl_usd", "fee", "funding", "reason", "capital_after"];
-  const rows = allTrades.map(t => headers.map(h => `"${t[h] !== undefined && t[h] !== null ? t[h] : ""}"`).join(","));
-  const blob = new Blob([[headers.join(","), ...rows].join("\n")], { type: "text/csv" });
+/* ---------------- CSV ---------------- */
+$("csv").addEventListener("click", () => {
+  if (!TRADES.length) return;
+  const cols = ["timestamp", "side", "entry_price", "exit_price", "duration_min", "ret_pct", "pnl_pct_neto", "pnl_usd", "fee", "funding", "reason", "capital_after"];
+  const rows = TRADES.map(t => cols.map(c => `"${t[c] ?? ""}"`).join(","));
+  const blob = new Blob([[cols.join(","), ...rows].join("\n")], { type: "text/csv" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = `trades_macd4h_${new Date().toISOString().split("T")[0]}.csv`;
+  a.download = `operaciones_macd4h_${new Date().toISOString().slice(0, 10)}.csv`;
   a.click();
-}
-
-function initTradingView() {
-  if (typeof TradingView === "undefined") { setTimeout(initTradingView, 200); return; }
-  if (document.getElementById("tv-chart-container")) {
-    new TradingView.widget({
-      container_id: "tv-chart-container",
-      symbol: "OKX:BTCUSDT.P",
-      interval: "240",
-      timezone: "America/Argentina/Buenos_Aires",
-      theme: "dark", style: "1", locale: "es",
-      toolbar_bg: "#10151d", enable_publishing: false, hide_top_toolbar: false, save_image: false,
-      backgroundColor: "#0a0e14", gridColor: "#212a37",
-      studies: [{ id: "MACD@tv-basicstudies", inputs: { fastLength: 24, slowLength: 52, signalLength: 18 } }],
-      overrides: {
-        "mainSeriesProperties.candleStyle.upColor": "#22c55e",
-        "mainSeriesProperties.candleStyle.downColor": "#ef4444",
-        "paneProperties.background": "#0a0e14",
-        "volumePaneSize": "hidden"
-      },
-      autosize: true
-    });
-  }
-}
-
-document.addEventListener("DOMContentLoaded", function () {
-  initTradingView();
-  fetchAll();
-  setInterval(fetchAll, REFRESH);
 });
-</script>
 
+let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(drawChart, 120); });
+setInterval(() => { if (STATE) { renderClock(STATE); renderPosition(STATE, STATE.last_price); } }, 30000);
+refresh();
+setInterval(refresh, REFRESH_MS);
+</script>
 </body>
 </html>
