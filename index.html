@@ -84,6 +84,7 @@ a, button { color: inherit; font: inherit; }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
 .sw { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
 .chart-box { position: relative; flex: 1; min-height: 420px; }
+@media (min-width: 961px) { .chart-box { min-height: 0; } }
 #chart { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .chart-empty { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; text-align: center; color: var(--dim); padding: 24px; }
 .tip {
@@ -144,8 +145,51 @@ a, button { color: inherit; font: inherit; }
 .empty { color: var(--dim); font-size: 14px; padding: 8px 0; }
 
 /* ---------- Responsive ---------- */
-@media (max-width: 1180px) {
-  .layout { grid-template-columns: minmax(0, 1fr) 360px; grid-template-areas: "chart pos" "clock clock" "perf trades"; }
+/* Escritorio / pantalla dedicada: todo entra en una pantalla, sin scroll */
+@media (min-width: 961px) {
+  html, body { height: 100%; overflow: hidden; }
+  body { display: flex; flex-direction: column; }
+  .top { flex: 0 0 auto; padding: 1.4vh 28px; }
+  .alert { flex: 0 0 auto; }
+  .layout {
+    flex: 1 1 auto; min-height: 0; padding: 1.6vh 28px 2vh; gap: 1.6vh var(--gap);
+    grid-template-rows: minmax(0, 1fr) clamp(170px, 27vh, 300px);
+  }
+  .panel { min-height: 0; overflow: hidden; padding: clamp(12px, 1.8vh, 20px) 20px; }
+  .panel h2 { margin-bottom: clamp(6px, 1.1vh, 12px); }
+  .chart-box { min-height: 0; }
+  .pos { display: flex; flex-direction: column; }
+  .side { font-size: clamp(38px, 6.4vh, 72px); }
+  .side.flat { font-size: clamp(30px, 4.4vh, 44px); }
+  .side-sub { margin-bottom: clamp(8px, 1.6vh, 18px); }
+  .facts { gap: clamp(4px, 1vh, 10px) 16px; }
+  .facts dd { font-size: clamp(14px, 1.9vh, 18px); }
+  .ruler { margin: clamp(8px, 1.8vh, 20px) 0 4px; }
+  .macd-note { margin-top: auto; padding-top: clamp(8px, 1.4vh, 16px); font-size: clamp(12.5px, 1.6vh, 14px); }
+  .clock-next { font-size: clamp(17px, 2.4vh, 24px); }
+  .clock-sub { margin-bottom: clamp(8px, 1.6vh, 18px); }
+  .stat-v { font-size: clamp(20px, 3vh, 30px); }
+  .stats { gap: clamp(8px, 1.6vh, 16px) 18px; }
+  .trades { display: flex; flex-direction: column; }
+  .tlist { flex: 1 1 auto; min-height: 0; overflow: hidden; }
+  .tlist li { padding: clamp(5px, 0.9vh, 10px) 0; }
+}
+/* Pantallas bajas (768/720 px): se oculta la regla visual, el dato ya está en la lista */
+@media (min-width: 961px) and (max-height: 860px) {
+  .ruler { display: none; }
+  .facts dd small { font-size: 11.5px; }
+}
+@media (min-width: 961px) and (max-height: 760px) {
+  .note-extra { display: none; }
+}
+@media (min-width: 961px) and (max-width: 1280px) {
+  .layout { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 330px; }
+  .brand-desc { display: none; }
+}
+/* Tablet y celular: una columna con scroll */
+@media (max-width: 960px) {
+  .layout { grid-template-columns: minmax(0, 1fr); grid-template-areas: "pos" "chart" "clock" "perf" "trades"; }
+  .chart-box { min-height: 360px; }
 }
 @media (max-width: 760px) {
   .top { padding: 14px 16px; gap: 10px 16px; }
@@ -153,7 +197,7 @@ a, button { color: inherit; font: inherit; }
   .price-val { font-size: 24px; }
   .conn { width: 100%; }
   .alert { margin: 12px 16px 0; }
-  .layout { padding: 14px 16px 24px; grid-template-columns: minmax(0, 1fr); grid-template-areas: "pos" "chart" "clock" "perf" "trades"; }
+  .layout { padding: 14px 16px 24px; }
   .chart-box { min-height: 340px; }
   .side { font-size: 52px; }
 }
@@ -352,7 +396,7 @@ function renderPosition(s, price) {
       <dd>${s.trailing_active ? `<span class="${signCls(lock)}">${pct(lock)}</span><small>el trailing ya movió el stop</small>`
                               : `${isNum(sl0) ? usd(sl0, 1) : "—"}<small>el trailing todavía no se movió</small>`}</dd>`;
     ruler.innerHTML = rulerSVG(dir, entry, price, sl);
-    $("macd-note").innerHTML = `${mr.text} Si llega un cruce ${side === "LONG" ? "SHORT" : "LONG"}, el bot cierra esta posición y abre la contraria.`;
+    $("macd-note").innerHTML = `${mr.text} <span class="note-extra">Si llega un cruce ${side === "LONG" ? "SHORT" : "LONG"}, el bot cierra esta posición y abre la contraria.</span>`;
   } else {
     el.textContent = "Sin posición"; el.className = "side flat";
     $("side-sub").textContent = mr.next ? `Espera el próximo cruce del MACD. Sería ${mr.next}.` : "Espera el próximo cruce del MACD.";
@@ -404,7 +448,7 @@ function renderPerf(s) {
   if (isNum(cap) && isNum(init) && init > 0) {
     const r = (cap - init) / init * 100;
     $("s-ret").innerHTML = `<span class="${signCls(r)}">${pct(r)}</span>`;
-    $("s-ret-l").textContent = `Resultado desde el inicio (${usd(cap - init, 2)})`;
+    $("s-ret-l").textContent = `Resultado total, ${usd(cap - init, 2)}`;
   }
   const w = s.total_wins || 0, l = s.total_losses || 0, n = w + l;
   $("s-wl").innerHTML = `<span class="up">${w}</span> / <span class="down">${l}</span>`;
@@ -427,6 +471,12 @@ function renderTrades() {
       <span class="t-usd">${isNum(t.pnl_usd) ? usd(t.pnl_usd, 2) : ""}</span>
     </li>`;
   }).join("");
+  fitTrades();
+}
+function fitTrades() {
+  const ul = $("tlist");
+  if (getComputedStyle(ul).overflow !== "hidden") return;
+  while (ul.children.length > 1 && ul.scrollHeight > ul.clientHeight + 1) ul.lastElementChild.remove();
 }
 
 /* ---------------- Gráfico (SVG propio) ---------------- */
@@ -544,7 +594,7 @@ $("csv").addEventListener("click", () => {
   a.click();
 });
 
-let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(drawChart, 120); });
+let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { drawChart(); renderTrades(); }, 120); });
 setInterval(() => { if (STATE) { renderClock(STATE); renderPosition(STATE, STATE.last_price); } }, 30000);
 refresh();
 setInterval(refresh, REFRESH_MS);
